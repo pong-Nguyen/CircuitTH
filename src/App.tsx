@@ -27,7 +27,7 @@ export default function App() {
   const [waveformOpen, setWaveformOpen] = useState(false);
   const [language, setLanguage] = useState<'vi' | 'en'>('en');
   const [consoleHeight, setConsoleHeight] = useState(210);
-  const [waveformHeight, setWaveformHeight] = useState(320);
+  const [waveformWidth, setWaveformWidth] = useState(560);
   const [consoleLines, setConsoleLines] = useState<string[]>([]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
@@ -69,6 +69,27 @@ export default function App() {
     const startY = event.clientY;
     const onMove = (moveEvent: MouseEvent) => {
       const next = Math.max(min, Math.min(max, currentHeight + startY - moveEvent.clientY));
+      setter(next);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  function startHorizontalResize(
+    event: React.MouseEvent<HTMLDivElement>,
+    currentWidth: number,
+    setter: React.Dispatch<React.SetStateAction<number>>,
+    min = 320,
+    max = 900,
+  ) {
+    event.preventDefault();
+    const startX = event.clientX;
+    const onMove = (moveEvent: MouseEvent) => {
+      const next = Math.max(min, Math.min(max, currentWidth + moveEvent.clientX - startX));
       setter(next);
     };
     const onUp = () => {
@@ -200,7 +221,16 @@ export default function App() {
 
       <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} language={language} />
 
-      <div className="content">
+      <div className={selectedComponent ? 'content hasProperties' : 'content'}>
+        <WaveformPanel
+          result={result}
+          open={waveformOpen}
+          width={waveformWidth}
+          language={language}
+          onClose={() => setWaveformOpen(false)}
+          onResizeStart={event => startHorizontalResize(event, waveformWidth, setWaveformWidth, 320, 900)}
+        />
+
         <div className="main">
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
@@ -217,15 +247,6 @@ export default function App() {
                 setSelectedWire={setSelectedWire}
               />
             </div>
-
-            <WaveformPanel
-              result={result}
-              open={waveformOpen}
-              height={waveformHeight}
-              language={language}
-              onClose={() => setWaveformOpen(false)}
-              onResizeStart={event => startVerticalResize(event, waveformHeight, setWaveformHeight, 160, 720)}
-            />
 
             {consoleOpen && (
               <div className="consolePanel" style={{
@@ -312,14 +333,16 @@ export default function App() {
           </div>
         </div>
 
-        <div className="rightPanel">
-          <PropertiesPanel
-            selected={selectedComponent}
-            onUpdate={updateComponent}
-            onDelete={deleteSelectedComponent}
-            language={language}
-          />
-        </div>
+        {selectedComponent && (
+          <div className="rightPanel">
+            <PropertiesPanel
+              selected={selectedComponent}
+              onUpdate={updateComponent}
+              onDelete={deleteSelectedComponent}
+              language={language}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

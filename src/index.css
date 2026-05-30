@@ -82,6 +82,74 @@ body {
   letter-spacing: 0.08em;
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.settingsModal {
+  width: 420px;
+  color: #e0e0e0;
+  background: #1a1d27;
+  border: 1px solid #2a2d3a;
+  border-radius: 10px;
+  padding: 24px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.modalHeader button {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.modalHint {
+  color: #8b95a7;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.modalActions button {
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.modalActions button:first-child {
+  background: #2a2d3a;
+  border: 1px solid #3a3d4a;
+  color: #aaa;
+}
+
+.modalActions button:last-child {
+  background: #2563eb;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+}
+
 .componentBar {
   height: 58px;
   display: flex;
@@ -286,21 +354,32 @@ body {
 }
 
 .waveformPanel {
-  min-height: 160px;
+  min-width: 320px;
+  max-width: 70vw;
   background: #0f1117;
-  border-top: 2px solid #2563eb;
+  border-right: 2px solid #2563eb;
   display: flex;
   flex-direction: column;
 }
 
 .panelResizeHandle {
   position: absolute;
+  top: 0;
+  right: -5px;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+  z-index: 5;
+}
+
+.consolePanel .panelResizeHandle {
   top: -4px;
   left: 0;
   right: 0;
+  bottom: auto;
+  width: auto;
   height: 8px;
   cursor: ns-resize;
-  z-index: 5;
 }
 
 .waveformHeader {
@@ -366,6 +445,11 @@ body {
   position: relative;
   flex: 1;
   min-height: 0;
+}
+
+.plotSurface.splitPlot {
+  flex: 1 1 50%;
+  min-height: 180px;
 }
 
 .emptyWaveform {
