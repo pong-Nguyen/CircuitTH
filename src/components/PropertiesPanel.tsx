@@ -6,10 +6,10 @@ function updatePins(x: number, y: number, rotation: number, type?: string) {
   if (type === 'GND') return [{ x, y }];
   const d = GRID * 2;
   switch (rotation) {
-    case 90:  return [{ x, y: y - d }, { x, y: y + d }];
+    case 90: return [{ x, y: y - d }, { x, y: y + d }];
     case 180: return [{ x: x + d, y }, { x: x - d, y }];
     case 270: return [{ x, y: y + d }, { x, y: y - d }];
-    default:  return [{ x: x - d, y }, { x: x + d, y }];
+    default: return [{ x: x - d, y }, { x: x + d, y }];
   }
 }
 
@@ -18,6 +18,52 @@ interface Props {
   onUpdate: (updated: CircuitComponent) => void;
   onDelete: () => void;
 }
+
+const componentMeta: Record<string, {
+  title: string;
+  valueLabel?: string;
+  placeholder?: string;
+  helper?: string;
+}> = {
+  R: {
+    title: 'Resistor',
+    valueLabel: 'Resistance',
+    placeholder: '1k',
+    helper: 'Nhap gia tri dien tro, vi du: 220, 1k, 10Meg.',
+  },
+  V: {
+    title: 'Voltage Source',
+    valueLabel: 'DC Voltage',
+    placeholder: '5',
+    helper: 'Nhap dien ap DC tinh bang Volt, vi du: 3.3, 5, 12.',
+  },
+  I: {
+    title: 'Current Source',
+    valueLabel: 'DC Current',
+    placeholder: '1m',
+    helper: 'Nhap dong dien DC tinh bang Ampere, vi du: 1m, 0.02.',
+  },
+  C: {
+    title: 'Capacitor',
+    valueLabel: 'Capacitance',
+    placeholder: '1u',
+    helper: 'Nhap dien dung, vi du: 100n, 1u, 10u.',
+  },
+  L: {
+    title: 'Inductor',
+    valueLabel: 'Inductance',
+    placeholder: '1m',
+    helper: 'Nhap dien cam, vi du: 10u, 1m, 10m.',
+  },
+  D: {
+    title: 'Diode',
+    helper: 'Diode uses the default SPICE model Ddefault.',
+  },
+  GND: {
+    title: 'Ground',
+    helper: 'Ground sets this net to node 0.',
+  },
+};
 
 export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props) {
   if (!selected) {
@@ -30,7 +76,7 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
   }
 
   function rotate() {
-    const newRot = (((selected!.rotation || 0) + 90) % 360) as 0|90|180|270;
+    const newRot = (((selected!.rotation || 0) + 90) % 360) as 0 | 90 | 180 | 270;
     onUpdate({
       ...selected!,
       rotation: newRot,
@@ -39,8 +85,7 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
   }
 
   function flipX() {
-    // FlipX on horizontal component = 180° rotation equivalent for pins
-    const newRot = (((selected!.rotation || 0) + 180) % 360) as 0|90|180|270;
+    const newRot = (((selected!.rotation || 0) + 180) % 360) as 0 | 90 | 180 | 270;
     onUpdate({
       ...selected!,
       flipX: !selected!.flipX,
@@ -50,8 +95,7 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
   }
 
   function flipY() {
-    // FlipY on vertical component
-    const newRot = (((selected!.rotation || 0) + 180) % 360) as 0|90|180|270;
+    const newRot = (((selected!.rotation || 0) + 180) % 360) as 0 | 90 | 180 | 270;
     onUpdate({
       ...selected!,
       flipY: !selected!.flipY,
@@ -60,9 +104,12 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
     });
   }
 
+  const meta = componentMeta[selected.type] ?? { title: selected.type };
+  const canEditValue = Boolean(meta.valueLabel);
+
   return (
     <div className="properties">
-      <h3>Properties</h3>
+      <h3>Properties - {meta.title}</h3>
 
       <label>Name</label>
       <input
@@ -71,25 +118,27 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
         onKeyDown={(e) => e.stopPropagation()}
       />
 
-      {selected.type !== 'GND' && selected.type !== 'D' && (
+      {canEditValue && (
         <>
-          <label>Value</label>
+          <label>{meta.valueLabel}</label>
           <input
             value={selected.value}
+            placeholder={meta.placeholder}
             onChange={(e) => onUpdate({ ...selected, value: e.target.value })}
             onKeyDown={(e) => e.stopPropagation()}
           />
+          {meta.helper && <p className="fieldHint">{meta.helper}</p>}
         </>
       )}
 
-      {selected.type === 'D' && (
-        <p>Diode uses the default SPICE model <b>Ddefault</b>.</p>
+      {!canEditValue && meta.helper && (
+        <p className="fieldHint">{meta.helper}</p>
       )}
 
       <div className="button-group" style={{ marginTop: 12 }}>
-        <button onClick={rotate}>↻ Rotate</button>
-        <button onClick={flipX}>↔ Flip X</button>
-        <button onClick={flipY}>↕ Flip Y</button>
+        <button onClick={rotate}>Rotate</button>
+        <button onClick={flipX}>Flip X</button>
+        <button onClick={flipY}>Flip Y</button>
       </div>
 
       <button className="deleteBtn" onClick={onDelete}>

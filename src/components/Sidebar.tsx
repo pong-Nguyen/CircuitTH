@@ -99,6 +99,7 @@ export default function Sidebar({ selectedTool, setSelectedTool }: Props) {
         <button
           key={tool.type}
           className={selectedTool === tool.type ? 'schematicTool activeTool' : 'schematicTool'}
+          onMouseDown={event => event.preventDefault()}
           onClick={() => toggle(tool.type)}
           title={tool.shortcut ? `${tool.name} (${tool.shortcut})` : tool.name}
         >

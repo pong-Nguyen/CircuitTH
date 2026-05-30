@@ -206,6 +206,13 @@ canvas {
   color: #666;
 }
 
+.properties .fieldHint {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .button-group {
   display: grid;
   grid-template-columns: 1fr 1fr;

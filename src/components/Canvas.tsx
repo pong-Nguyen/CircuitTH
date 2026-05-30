@@ -69,6 +69,7 @@ export default function Canvas({
 
   // World-space mouse position (snapped used for ghost/wire preview)
   const [mousePos, setMousePos] = useState<Point>({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
@@ -550,6 +551,19 @@ export default function Canvas({
     zoomAt(screen, e.deltaY);
   }
 
+  function rotateSelectedComponent() {
+    if (!selectedComponent) return false;
+    const newRot = (((selectedComponent.rotation || 0) + 90) % 360) as 0 | 90 | 180 | 270;
+    const updated = {
+      ...selectedComponent,
+      rotation: newRot,
+      pins: updatePins(selectedComponent.x, selectedComponent.y, newRot, selectedComponent.type),
+    };
+    setComponents(prev => prev.map(c => c.uuid === updated.uuid ? updated : c));
+    setSelectedComponent(updated);
+    return true;
+  }
+
   // ─── Keyboard ────────────────────────────────────────────────────────────
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -560,8 +574,14 @@ export default function Canvas({
       if (drawingWire) { setDrawingWire(false); setTempWire([]); }
       else setSelectedTool(null);
     }
-    if ((e.key === 'r' || e.key === 'R') && isComponentTool) {
-      setGhostRotation(prev => ((prev + 90) % 360) as 0 | 90 | 180 | 270);
+    if (e.key === 'r' || e.key === 'R') {
+      if (selectedComponent) {
+        e.preventDefault();
+        rotateSelectedComponent();
+      } else if (isComponentTool) {
+        e.preventDefault();
+        setGhostRotation(prev => ((prev + 90) % 360) as 0 | 90 | 180 | 270);
+      }
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       if (selectedComponent) {
@@ -596,14 +616,29 @@ export default function Canvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [drawingWire, selectedTool, selectedComponent, selectedWire, ghostRotation, viewport]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.max(1, Math.round(rect.width || 800));
+      const height = Math.max(1, Math.round(rect.height || window.innerHeight));
+      canvas.width = width;
+      canvas.height = height;
+      setCanvasSize({ width, height });
+    };
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
   // Resize canvas to CSS size and re-render whenever state changes
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width || 800;
-    canvas.height = rect.height || window.innerHeight;
     render();
-  }, [components, wires, selectedComponent, selectedWire, mousePos, tempWire, drawingWire, selectedTool, ghostRotation, viewport]);
+  }, [components, wires, selectedComponent, selectedWire, mousePos, tempWire, drawingWire, selectedTool, ghostRotation, viewport, canvasSize]);
 
   // ─── Cursor ───────────────────────────────────────────────────────────────
 
