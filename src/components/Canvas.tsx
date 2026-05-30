@@ -514,7 +514,7 @@ export default function Canvas({
     if (isComponentTool && !drawingWire) {
       const type = selectedTool as ComponentType;
       const count = components.filter(c => c.type === type).length;
-      setComponents(prev => [...prev, {
+      const nextComponent: CircuitComponent = {
         uuid: crypto.randomUUID(),
         id: type + (count + 1),
         type, x: swx, y: swy,
@@ -524,7 +524,10 @@ export default function Canvas({
         source: defaultSource(type),
         dependent: defaultDependent(type),
         pins: updatePins(swx, swy, ghostRotation, type),
-      }]);
+      };
+      setComponents(prev => [...prev, nextComponent]);
+      setSelectedComponent(nextComponent);
+      setSelectedWire(null);
       if (!e.shiftKey) setSelectedTool(null);
       return;
     }
