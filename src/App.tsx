@@ -165,9 +165,9 @@ export default function App() {
         onClear={clearSchematic}
       />
 
-      <div className="content">
-        <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} />
+      <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} />
 
+      <div className="content">
         <div className="main">
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>

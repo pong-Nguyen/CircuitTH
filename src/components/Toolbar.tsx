@@ -126,17 +126,6 @@ export default function Toolbar({
     whiteSpace: 'nowrap',
   };
 
-  const quickMode = (mode: SimConfig['mode']) => (
-    <button
-      key={mode}
-      className={config.mode === mode ? 'modeButton active' : 'modeButton'}
-      onClick={() => onConfigChange({ ...config, mode })}
-      title={`Use ${mode.toUpperCase()} analysis`}
-    >
-      .{mode.toUpperCase()}
-    </button>
-  );
-
   return (
     <>
       {/* ── Toolbar ── */}
@@ -157,9 +146,9 @@ export default function Toolbar({
 
         <div style={{ width: 1, height: 24, background: '#2a2d3a', flexShrink: 0 }} />
 
-        <div className="modeSwitcher" aria-label="Simulation mode">
-          {(['op', 'dc', 'tran', 'ac'] as const).map(quickMode)}
-        </div>
+        <span className="modeStatus" title="Current simulation mode">
+          .{config.mode.toUpperCase()}
+        </span>
 
         <div style={{ flex: 1 }} />
 

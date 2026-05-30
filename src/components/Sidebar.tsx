@@ -3,84 +3,108 @@ interface Props {
   setSelectedTool: (tool: string | null) => void;
 }
 
-const componentGroups = [
-  {
-    title: 'Passive',
-    items: [
-      { type: 'R', name: 'Resistor', hint: '1k' },
-      { type: 'C', name: 'Capacitor', hint: '1u' },
-      { type: 'L', name: 'Inductor', hint: '1m' },
-    ],
-  },
-  {
-    title: 'Sources',
-    items: [
-      { type: 'V', name: 'Voltage', hint: 'DC 10V' },
-      { type: 'I', name: 'Current', hint: 'DC 1mA' },
-    ],
-  },
-  {
-    title: 'Semiconductor',
-    items: [
-      { type: 'D', name: 'Diode', hint: 'Ddefault' },
-      { type: 'GND', name: 'Ground', hint: 'Node 0' },
-    ],
-  },
+type ToolId = 'R' | 'C' | 'L' | 'V' | 'I' | 'D' | 'GND' | 'wire';
+
+const tools: Array<{ type: ToolId; name: string; shortcut?: string }> = [
+  { type: 'R', name: 'Resistor' },
+  { type: 'C', name: 'Capacitor' },
+  { type: 'L', name: 'Inductor' },
+  { type: 'V', name: 'Voltage Source' },
+  { type: 'I', name: 'Current Source' },
+  { type: 'D', name: 'Diode' },
+  { type: 'GND', name: 'Ground' },
+  { type: 'wire', name: 'Wire', shortcut: 'W' },
 ];
 
+function ToolIcon({ type }: { type: ToolId }) {
+  if (type === 'R') {
+    return (
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M2 16h8l3-7 6 14 6-14 6 14 6-14 3 7h6" />
+      </svg>
+    );
+  }
+
+  if (type === 'C') {
+    return (
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M2 16h16M30 16h16M18 6v20M30 6v20" />
+      </svg>
+    );
+  }
+
+  if (type === 'L') {
+    return (
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M2 16h8M38 16h8" />
+        <path d="M10 16a7 7 0 0 1 14 0M24 16a7 7 0 0 1 14 0" />
+      </svg>
+    );
+  }
+
+  if (type === 'V') {
+    return (
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M2 16h10M36 16h10" />
+        <circle cx="24" cy="16" r="11" />
+        <path d="M18 16h6M21 13v6M28 16h5" />
+      </svg>
+    );
+  }
+
+  if (type === 'I') {
+    return (
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M2 16h10M36 16h10" />
+        <circle cx="24" cy="16" r="11" />
+        <path d="M18 16h12M26 11l5 5-5 5" />
+      </svg>
+    );
+  }
+
+  if (type === 'D') {
+    return (
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M2 16h12M34 16h12M14 7v18l18-9-18-9ZM34 7v18" />
+      </svg>
+    );
+  }
+
+  if (type === 'GND') {
+    return (
+      <svg viewBox="0 0 48 32" aria-hidden="true">
+        <path d="M24 4v9M12 13h24M16 19h16M20 25h8" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 48 32" aria-hidden="true">
+      <path d="M4 8h14v16h26" />
+      <circle cx="4" cy="8" r="3" />
+      <circle cx="18" cy="24" r="3" />
+      <circle cx="44" cy="24" r="3" />
+    </svg>
+  );
+}
+
 export default function Sidebar({ selectedTool, setSelectedTool }: Props) {
-  function toggle(tool: string) {
+  function toggle(tool: ToolId) {
     setSelectedTool(selectedTool === tool ? null : tool);
   }
 
   return (
-    <div className="sidebar">
-      <h2>Components</h2>
-
-      {componentGroups.map(group => (
-        <section className="componentGroup" key={group.title}>
-          <h3>{group.title}</h3>
-          <div className="componentGrid">
-            {group.items.map(item => (
-              <button
-                key={item.type}
-                className={selectedTool === item.type ? 'componentTile activeTool' : 'componentTile'}
-                onClick={() => toggle(item.type)}
-                title={`${item.name} (${item.type})`}
-              >
-                <span className="componentSymbol">{item.type}</span>
-                <span className="componentName">{item.name}</span>
-                <span className="componentHint">{item.hint}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+    <div className="componentBar" aria-label="Component tools">
+      {tools.map(tool => (
+        <button
+          key={tool.type}
+          className={selectedTool === tool.type ? 'schematicTool activeTool' : 'schematicTool'}
+          onClick={() => toggle(tool.type)}
+          title={tool.shortcut ? `${tool.name} (${tool.shortcut})` : tool.name}
+        >
+          <ToolIcon type={tool.type} />
+        </button>
       ))}
-
-      <hr style={{ borderColor: '#444', margin: '12px 0' }} />
-      <h2>Wiring</h2>
-      <button className={selectedTool === 'wire' ? 'wireButton activeTool' : 'wireButton'} onClick={() => toggle('wire')}>
-        <span>Wire</span>
-        <kbd>W</kbd>
-      </button>
-
-      <hr style={{ borderColor: '#444', margin: '12px 0' }} />
-      <div style={{ fontSize: '11px', color: '#aaa', lineHeight: '1.8' }}>
-        <b style={{ color: '#ccc' }}>Click:</b> chon / dat linh kien<br />
-        <b style={{ color: '#ccc' }}>Shift+click:</b> dat nhieu<br />
-        <b style={{ color: '#ccc' }}>R:</b> xoay linh kien<br />
-        <b style={{ color: '#ccc' }}>Esc:</b> huy thao tac<br />
-        <hr style={{ borderColor: '#555', margin: '6px 0' }} />
-        <b style={{ color: '#ccc' }}>Wire:</b> di day<br />
-        <hr style={{ borderColor: '#555', margin: '6px 0' }} />
-        <b style={{ color: '#ccc' }}>Delete:</b> xoa<br />
-        <b style={{ color: '#ccc' }}>Click+Hold:</b> di chuyen<br />
-        <hr style={{ borderColor: '#555', margin: '6px 0' }} />
-        <b style={{ color: '#22cc88' }}>Scroll:</b> zoom tai con tro<br />
-        <b style={{ color: '#22cc88' }}>Keo nen:</b> di chuyen vung nhin<br />
-        <b style={{ color: '#22cc88' }}>Ctrl+ +/-:</b> zoom giua man hinh<br />
-        <b style={{ color: '#22cc88' }}>Ctrl+0:</b> reset view
-      </div>
     </div>
   );
 }
