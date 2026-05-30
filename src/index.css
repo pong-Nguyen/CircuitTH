@@ -30,6 +30,9 @@ body {
   overflow: hidden;
   border-left: 1px solid #cfd8e3;
   background: #f7f9fc;
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
 }
 
 .topToolbar {

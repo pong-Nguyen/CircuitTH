@@ -221,7 +221,7 @@ export default function App() {
 
       <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} language={language} />
 
-      <div className={selectedComponent ? 'content hasProperties' : 'content'}>
+      <div className="content">
         <WaveformPanel
           result={result}
           open={waveformOpen}
@@ -333,16 +333,14 @@ export default function App() {
           </div>
         </div>
 
-        {selectedComponent && (
-          <div className="rightPanel">
-            <PropertiesPanel
-              selected={selectedComponent}
-              onUpdate={updateComponent}
-              onDelete={deleteSelectedComponent}
-              language={language}
-            />
-          </div>
-        )}
+        <div className="rightPanel">
+          <PropertiesPanel
+            selected={selectedComponent}
+            onUpdate={updateComponent}
+            onDelete={deleteSelectedComponent}
+            language={language}
+          />
+        </div>
       </div>
     </div>
   );
