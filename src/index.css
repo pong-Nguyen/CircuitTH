@@ -96,6 +96,145 @@ body {
   flex-shrink: 0;
 }
 
+.libraryTool {
+  margin-left: 8px;
+  border-color: #2563eb !important;
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.libraryOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 86px;
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.libraryDialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  box-sizing: border-box;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.28);
+  padding: 16px;
+}
+
+.libraryHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.libraryHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.libraryHeader p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.libraryHeader button {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.libraryGroup {
+  margin-top: 14px;
+}
+
+.libraryGroup h4 {
+  margin: 0 0 8px;
+  color: #475569;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.libraryGrid button {
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  border: 1px solid #d6dee9;
+  border-radius: 7px;
+  background: #f8fafc;
+  cursor: pointer;
+  padding: 10px;
+}
+
+.libraryGrid button:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.libraryIcon {
+  width: 52px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  color: #1d4ed8;
+  flex: 0 0 auto;
+}
+
+.libraryIcon svg {
+  width: 48px;
+  height: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.libraryIcon text {
+  fill: currentColor;
+  stroke: none;
+  font: 700 12px Arial, sans-serif;
+}
+
+.libraryGrid strong,
+.libraryGrid small {
+  display: block;
+}
+
+.libraryGrid strong {
+  color: #111827;
+  font-size: 13px;
+}
+
+.libraryGrid small {
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 3px;
+}
+
 .schematicTool {
   width: 44px;
   height: 40px;
@@ -124,6 +263,54 @@ body {
   stroke-width: 2.6;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.schematicTool text {
+  fill: currentColor;
+  stroke: none;
+  font: 700 12px Arial, sans-serif;
+}
+
+.canvasWrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.selectionTaskbar {
+  position: absolute;
+  z-index: 20;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  background: #111827;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+}
+
+.selectionTaskbar button {
+  min-width: 34px;
+  height: 28px;
+  border: 1px solid #475569;
+  border-radius: 5px;
+  background: #1f2937;
+  color: #e5e7eb;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.selectionTaskbar button:hover {
+  border-color: #60a5fa;
+  color: #93c5fd;
+}
+
+.selectionTaskbar button.danger:hover {
+  border-color: #ef4444;
+  color: #fecaca;
 }
 
 .tool {

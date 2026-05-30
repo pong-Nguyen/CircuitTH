@@ -80,6 +80,14 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
     if (c.type === 'L') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
     if (c.type === 'V') lines.push(`${c.id} ${n1} ${n2} DC ${c.value}`);
     if (c.type === 'I') lines.push(`${c.id} ${n1} ${n2} DC ${c.value}`);
+    if (c.type === 'E' && c.pins[2] && c.pins[3]) {
+      lines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
+    }
+    if (c.type === 'G' && c.pins[2] && c.pins[3]) {
+      lines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
+    }
+    if (c.type === 'F') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
+    if (c.type === 'H') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
     if (c.type === 'D') lines.push(`${c.id} ${n1} ${n2} Ddefault`);
   }
 

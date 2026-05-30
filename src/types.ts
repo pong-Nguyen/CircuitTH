@@ -4,6 +4,10 @@ export type ComponentType =
   | 'L'
   | 'V'
   | 'I'
+  | 'E'
+  | 'F'
+  | 'G'
+  | 'H'
   | 'D'
   | 'GND';
 

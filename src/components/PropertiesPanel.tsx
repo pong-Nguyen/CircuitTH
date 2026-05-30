@@ -5,6 +5,21 @@ const GRID = 20;
 function updatePins(x: number, y: number, rotation: number, type?: string) {
   if (type === 'GND') return [{ x, y }];
   const d = GRID * 2;
+  if (type === 'E' || type === 'G') {
+    const localPins = [
+      { x: -d, y: 0 },
+      { x: d, y: 0 },
+      { x: 0, y: -d },
+      { x: 0, y: d },
+    ];
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.round(Math.cos(rad));
+    const sin = Math.round(Math.sin(rad));
+    return localPins.map(p => ({
+      x: x + p.x * cos - p.y * sin,
+      y: y + p.x * sin + p.y * cos,
+    }));
+  }
   switch (rotation) {
     case 90: return [{ x, y: y - d }, { x, y: y + d }];
     case 180: return [{ x: x + d, y }, { x: x - d, y }];
@@ -54,6 +69,30 @@ const componentMeta: Record<string, {
     valueLabel: 'Inductance',
     placeholder: '1m',
     helper: 'Nhap dien cam, vi du: 10u, 1m, 10m.',
+  },
+  E: {
+    title: 'VCVS',
+    valueLabel: 'Voltage Gain',
+    placeholder: '1',
+    helper: 'Nguon ap phu thuoc ap: E out+ out- ctrl+ ctrl- gain.',
+  },
+  G: {
+    title: 'VCCS',
+    valueLabel: 'Transconductance',
+    placeholder: '1m',
+    helper: 'Nguon dong phu thuoc ap: G out+ out- ctrl+ ctrl- gain.',
+  },
+  F: {
+    title: 'CCCS',
+    valueLabel: 'Control Source + Gain',
+    placeholder: 'V1 1',
+    helper: 'Nguon dong phu thuoc dong: nhap ten nguon ap dieu khien va he so, vi du V1 2.',
+  },
+  H: {
+    title: 'CCVS',
+    valueLabel: 'Control Source + Gain',
+    placeholder: 'V1 1',
+    helper: 'Nguon ap phu thuoc dong: nhap ten nguon ap dieu khien va he so, vi du V1 100.',
   },
   D: {
     title: 'Diode',

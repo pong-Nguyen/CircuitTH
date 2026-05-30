@@ -6,7 +6,7 @@ import type {
   Point,
   Wire,
 } from '../types';
-import { useViewport, screenToWorld } from '../hooks/useViewport';
+import { useViewport, screenToWorld, worldToScreen } from '../hooks/useViewport';
 
 const GRID = 20;
 
@@ -17,6 +17,21 @@ function snap(v: number) {
 function updatePins(x: number, y: number, rotation: number, type?: string): Pin[] {
   if (type === 'GND') return [{ x, y }]; // single pin at center top
   const d = GRID * 2;
+  if (type === 'E' || type === 'G') {
+    const localPins = [
+      { x: -d, y: 0 },
+      { x: d, y: 0 },
+      { x: 0, y: -d },
+      { x: 0, y: d },
+    ];
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.round(Math.cos(rad));
+    const sin = Math.round(Math.sin(rad));
+    return localPins.map(p => ({
+      x: x + p.x * cos - p.y * sin,
+      y: y + p.x * sin + p.y * cos,
+    }));
+  }
   switch (rotation) {
     case 90:  return [{ x, y: y - d }, { x, y: y + d }];
     case 180: return [{ x: x + d, y }, { x: x - d, y }];
@@ -31,6 +46,8 @@ function defaultValue(type: string) {
   if (type === 'L') return '1m';
   if (type === 'V') return '10';
   if (type === 'I') return '1m';
+  if (type === 'E' || type === 'G') return '1';
+  if (type === 'F' || type === 'H') return 'V1 1';
   return '';
 }
 
@@ -268,6 +285,29 @@ export default function Canvas({
     ctx.stroke();
   }
 
+  function drawDependentSource(ctx: CanvasRenderingContext2D, type: string) {
+    const d = GRID * 2, r = GRID * 1.0;
+    ctx.beginPath(); ctx.moveTo(-d, 0); ctx.lineTo(-r, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(d, 0); ctx.stroke();
+    if (type === 'E' || type === 'G') {
+      ctx.beginPath(); ctx.moveTo(0, -d); ctx.lineTo(0, -r); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, r); ctx.lineTo(0, d); ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.moveTo(0, -r);
+    ctx.lineTo(r, 0);
+    ctx.lineTo(0, r);
+    ctx.lineTo(-r, 0);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = ctx.strokeStyle as string;
+    ctx.font = `bold ${GRID * 0.7}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(type, 0, 0);
+    ctx.textBaseline = 'alphabetic';
+  }
+
   function drawComponent(ctx: CanvasRenderingContext2D, c: CircuitComponent, isGhost = false) {
     ctx.save();
     ctx.translate(c.x, c.y);
@@ -281,6 +321,7 @@ export default function Canvas({
     if (c.type === 'L') drawInductor(ctx);
     if (c.type === 'V') drawVoltageSource(ctx);
     if (c.type === 'I') drawCurrentSource(ctx);
+    if (['E', 'F', 'G', 'H'].includes(c.type)) drawDependentSource(ctx, c.type);
     if (c.type === 'D') drawDiode(ctx);
     if (c.type === 'GND') drawGnd(ctx);
     ctx.restore();
@@ -415,7 +456,8 @@ export default function Canvas({
   function findComponent(wx: number, wy: number) {
     for (let i = components.length - 1; i >= 0; i--) {
       const c = components[i];
-      if (Math.abs(wx - c.x) <= GRID * 2.5 && Math.abs(wy - c.y) <= GRID * 1.5)
+      const halfH = c.type === 'E' || c.type === 'G' ? GRID * 2.5 : GRID * 1.5;
+      if (Math.abs(wx - c.x) <= GRID * 2.5 && Math.abs(wy - c.y) <= halfH)
         return c;
     }
     return null;
@@ -564,6 +606,26 @@ export default function Canvas({
     return true;
   }
 
+  function flipSelectedComponent(axis: 'x' | 'y') {
+    if (!selectedComponent) return;
+    const newRot = (((selectedComponent.rotation || 0) + 180) % 360) as 0 | 90 | 180 | 270;
+    const updated = {
+      ...selectedComponent,
+      flipX: axis === 'x' ? !selectedComponent.flipX : selectedComponent.flipX,
+      flipY: axis === 'y' ? !selectedComponent.flipY : selectedComponent.flipY,
+      rotation: newRot,
+      pins: updatePins(selectedComponent.x, selectedComponent.y, newRot, selectedComponent.type),
+    };
+    setComponents(prev => prev.map(c => c.uuid === updated.uuid ? updated : c));
+    setSelectedComponent(updated);
+  }
+
+  function deleteSelectedComponent() {
+    if (!selectedComponent) return;
+    setComponents(prev => prev.filter(c => c.uuid !== selectedComponent.uuid));
+    setSelectedComponent(null);
+  }
+
   // ─── Keyboard ────────────────────────────────────────────────────────────
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -649,14 +711,39 @@ export default function Canvas({
     return 'default';
   };
 
+  const selectedScreen = selectedComponent
+    ? worldToScreen({ x: selectedComponent.x, y: selectedComponent.y }, viewport)
+    : null;
+  const taskbarLeft = selectedScreen
+    ? Math.max(8, Math.min(canvasSize.width - 172, selectedScreen.x - 78))
+    : 0;
+  const taskbarTop = selectedScreen
+    ? Math.max(8, Math.min(canvasSize.height - 42, selectedScreen.y - 72))
+    : 0;
+
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ cursor: getCursor(), display: 'block', flex: 1 }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onWheel={handleWheel}
-    />
+    <div className="canvasWrap">
+      <canvas
+        ref={canvasRef}
+        style={{ cursor: getCursor(), display: 'block', flex: 1 }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onWheel={handleWheel}
+      />
+
+      {selectedComponent && selectedScreen && (
+        <div
+          className="selectionTaskbar"
+          style={{ left: taskbarLeft, top: taskbarTop }}
+          onMouseDown={event => event.preventDefault()}
+        >
+          <button onClick={rotateSelectedComponent} title="Rotate">R</button>
+          <button onClick={() => flipSelectedComponent('x')} title="Flip X">FX</button>
+          <button onClick={() => flipSelectedComponent('y')} title="Flip Y">FY</button>
+          <button className="danger" onClick={deleteSelectedComponent} title="Delete">Del</button>
+        </div>
+      )}
+    </div>
   );
 }
