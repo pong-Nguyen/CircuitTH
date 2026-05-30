@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import type {
   CircuitComponent,
   ComponentType,
+  DependentSourceConfig,
   Pin,
   Point,
+  SourceConfig,
   Wire,
 } from '../types';
 import { useViewport, screenToWorld, worldToScreen } from '../hooks/useViewport';
@@ -49,6 +51,46 @@ function defaultValue(type: string) {
   if (type === 'E' || type === 'G') return '1';
   if (type === 'F' || type === 'H') return 'V1 1';
   return '';
+}
+
+function defaultSource(type: string): SourceConfig | undefined {
+  if (type !== 'V' && type !== 'I') return undefined;
+  const dc = type === 'V' ? '5' : '1m';
+  return {
+    mode: 'DC',
+    dc,
+    acMag: '1',
+    acPhase: '0',
+    pulseInitial: '0',
+    pulsePulsed: dc,
+    pulseDelay: '0',
+    pulseRise: '1u',
+    pulseFall: '1u',
+    pulseWidth: '1m',
+    pulsePeriod: '2m',
+    sinOffset: '0',
+    sinAmplitude: dc,
+    sinFrequency: '1k',
+    sinDelay: '0',
+    sinDamping: '0',
+    sinPhase: '0',
+  };
+}
+
+function defaultDependent(type: string): DependentSourceConfig | undefined {
+  if (type === 'F' || type === 'H') return { vctrl: 'V1', gain: '1' };
+  return undefined;
+}
+
+function componentLabel(c: CircuitComponent) {
+  if (c.type === 'GND') return '';
+  if ((c.type === 'F' || c.type === 'H') && c.dependent) {
+    return `${c.id} ${c.dependent.vctrl} ${c.dependent.gain}`;
+  }
+  if ((c.type === 'V' || c.type === 'I') && c.source) {
+    return `${c.id} ${c.source.mode}`;
+  }
+  return `${c.id} ${c.value}`;
 }
 
 function distSeg(px: number, py: number, x1: number, y1: number, x2: number, y2: number) {
@@ -332,7 +374,7 @@ export default function Canvas({
     ctx.textAlign = 'left';
     // GND has no value label; only show id for non-GND
     if (c.type !== 'GND') {
-      ctx.fillText(`${c.id} ${c.value}`, c.x - GRID, c.y - GRID * 1.6);
+      ctx.fillText(componentLabel(c), c.x - GRID, c.y - GRID * 1.6);
     }
 
     if (!isGhost) {
@@ -415,6 +457,8 @@ export default function Canvas({
         rotation: ghostRotation,
         flipX: false, flipY: false,
         value: defaultValue(selectedTool),
+        source: defaultSource(selectedTool),
+        dependent: defaultDependent(selectedTool),
         pins: updatePins(sx, sy, ghostRotation, selectedTool),
       };
       drawComponent(ctx, ghost, true);
@@ -503,6 +547,8 @@ export default function Canvas({
         rotation: ghostRotation,
         flipX: false, flipY: false,
         value: defaultValue(type),
+        source: defaultSource(type),
+        dependent: defaultDependent(type),
         pins: updatePins(swx, swy, ghostRotation, type),
       }]);
       if (!e.shiftKey) setSelectedTool(null);

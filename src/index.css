@@ -400,6 +400,41 @@ canvas {
   line-height: 1.45;
 }
 
+.modeTabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.modeTabs button {
+  height: 30px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.modeTabs button.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.propertyGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.propertyGrid label {
+  margin-top: 10px;
+}
+
 .button-group {
   display: grid;
   grid-template-columns: 1fr 1fr;

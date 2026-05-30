@@ -23,6 +23,33 @@ export interface Wire {
   points: Point[];
 }
 
+export type SourceMode = 'DC' | 'AC' | 'PULSE' | 'SIN';
+
+export interface SourceConfig {
+  mode: SourceMode;
+  dc: string;
+  acMag: string;
+  acPhase: string;
+  pulseInitial: string;
+  pulsePulsed: string;
+  pulseDelay: string;
+  pulseRise: string;
+  pulseFall: string;
+  pulseWidth: string;
+  pulsePeriod: string;
+  sinOffset: string;
+  sinAmplitude: string;
+  sinFrequency: string;
+  sinDelay: string;
+  sinDamping: string;
+  sinPhase: string;
+}
+
+export interface DependentSourceConfig {
+  vctrl: string;
+  gain: string;
+}
+
 export interface CircuitComponent {
   uuid: string;
 
@@ -43,6 +70,10 @@ export interface CircuitComponent {
   flipY: boolean;
 
   value: string;
+
+  source?: SourceConfig;
+
+  dependent?: DependentSourceConfig;
 
   pins: Pin[];
 }

@@ -11,6 +11,18 @@ function distToSegment(px: number, py: number, x1: number, y1: number, x2: numbe
   return Math.sqrt((px - (x1 + t * C)) ** 2 + (py - (y1 + t * D)) ** 2);
 }
 
+function sourceExpression(c: CircuitComponent) {
+  const src = c.source;
+  if (!src) return `DC ${c.value}`;
+
+  if (src.mode === 'DC') return `DC ${src.dc}`;
+  if (src.mode === 'AC') return `DC ${src.dc} AC ${src.acMag} ${src.acPhase}`;
+  if (src.mode === 'PULSE') {
+    return `PULSE(${src.pulseInitial} ${src.pulsePulsed} ${src.pulseDelay} ${src.pulseRise} ${src.pulseFall} ${src.pulseWidth} ${src.pulsePeriod})`;
+  }
+  return `SIN(${src.sinOffset} ${src.sinAmplitude} ${src.sinFrequency} ${src.sinDelay} ${src.sinDamping} ${src.sinPhase})`;
+}
+
 export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
   const uf = new UnionFind();
 
@@ -78,16 +90,22 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
     if (c.type === 'R') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
     if (c.type === 'C') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
     if (c.type === 'L') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
-    if (c.type === 'V') lines.push(`${c.id} ${n1} ${n2} DC ${c.value}`);
-    if (c.type === 'I') lines.push(`${c.id} ${n1} ${n2} DC ${c.value}`);
+    if (c.type === 'V') lines.push(`${c.id} ${n1} ${n2} ${sourceExpression(c)}`);
+    if (c.type === 'I') lines.push(`${c.id} ${n1} ${n2} ${sourceExpression(c)}`);
     if (c.type === 'E' && c.pins[2] && c.pins[3]) {
       lines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
     }
     if (c.type === 'G' && c.pins[2] && c.pins[3]) {
       lines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
     }
-    if (c.type === 'F') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
-    if (c.type === 'H') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
+    if (c.type === 'F') {
+      const dep = c.dependent ?? { vctrl: 'V1', gain: c.value || '1' };
+      lines.push(`${c.id} ${n1} ${n2} ${dep.vctrl} ${dep.gain}`);
+    }
+    if (c.type === 'H') {
+      const dep = c.dependent ?? { vctrl: 'V1', gain: c.value || '1' };
+      lines.push(`${c.id} ${n1} ${n2} ${dep.vctrl} ${dep.gain}`);
+    }
     if (c.type === 'D') lines.push(`${c.id} ${n1} ${n2} Ddefault`);
   }
 

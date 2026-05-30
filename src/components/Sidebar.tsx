@@ -38,6 +38,11 @@ const libraryGroups: Array<{ title: string; items: Array<{ type: ToolId; name: s
     items: [
       { type: 'E', name: 'VCVS', description: 'Voltage-controlled voltage source' },
       { type: 'G', name: 'VCCS', description: 'Voltage-controlled current source' },
+    ],
+  },
+  {
+    title: 'Current-Controlled Sources',
+    items: [
       { type: 'F', name: 'CCCS', description: 'Current-controlled current source' },
       { type: 'H', name: 'CCVS', description: 'Current-controlled voltage source' },
     ],
@@ -46,6 +51,11 @@ const libraryGroups: Array<{ title: string; items: Array<{ type: ToolId; name: s
     title: 'Semiconductor',
     items: [
       { type: 'D', name: 'Diode', description: 'Diode mac dinh' },
+    ],
+  },
+  {
+    title: 'Reference',
+    items: [
       { type: 'GND', name: 'Ground', description: 'Node 0' },
     ],
   },

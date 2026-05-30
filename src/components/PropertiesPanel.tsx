@@ -1,4 +1,4 @@
-import type { CircuitComponent } from '../types';
+import type { CircuitComponent, SourceConfig, SourceMode } from '../types';
 
 const GRID = 20;
 
@@ -28,6 +28,36 @@ function updatePins(x: number, y: number, rotation: number, type?: string) {
   }
 }
 
+function defaultSource(type: string, value = ''): SourceConfig {
+  const dc = value || (type === 'I' ? '1m' : '5');
+  return {
+    mode: 'DC',
+    dc,
+    acMag: '1',
+    acPhase: '0',
+    pulseInitial: '0',
+    pulsePulsed: dc,
+    pulseDelay: '0',
+    pulseRise: '1u',
+    pulseFall: '1u',
+    pulseWidth: '1m',
+    pulsePeriod: '2m',
+    sinOffset: '0',
+    sinAmplitude: dc,
+    sinFrequency: '1k',
+    sinDelay: '0',
+    sinDamping: '0',
+    sinPhase: '0',
+  };
+}
+
+function sourceSummary(source: SourceConfig) {
+  if (source.mode === 'DC') return source.dc;
+  if (source.mode === 'AC') return `AC ${source.acMag}`;
+  if (source.mode === 'PULSE') return 'PULSE';
+  return 'SIN';
+}
+
 interface Props {
   selected: CircuitComponent | null;
   onUpdate: (updated: CircuitComponent) => void;
@@ -46,18 +76,6 @@ const componentMeta: Record<string, {
     placeholder: '1k',
     helper: 'Nhap gia tri dien tro, vi du: 220, 1k, 10Meg.',
   },
-  V: {
-    title: 'Voltage Source',
-    valueLabel: 'DC Voltage',
-    placeholder: '5',
-    helper: 'Nhap dien ap DC tinh bang Volt, vi du: 3.3, 5, 12.',
-  },
-  I: {
-    title: 'Current Source',
-    valueLabel: 'DC Current',
-    placeholder: '1m',
-    helper: 'Nhap dong dien DC tinh bang Ampere, vi du: 1m, 0.02.',
-  },
   C: {
     title: 'Capacitor',
     valueLabel: 'Capacitance',
@@ -70,29 +88,33 @@ const componentMeta: Record<string, {
     placeholder: '1m',
     helper: 'Nhap dien cam, vi du: 10u, 1m, 10m.',
   },
+  V: {
+    title: 'Voltage Source',
+    helper: 'Ho tro DC, AC, PULSE va SIN.',
+  },
+  I: {
+    title: 'Current Source',
+    helper: 'Ho tro DC, AC, PULSE va SIN.',
+  },
   E: {
     title: 'VCVS',
-    valueLabel: 'Voltage Gain',
+    valueLabel: 'Gain',
     placeholder: '1',
     helper: 'Nguon ap phu thuoc ap: E out+ out- ctrl+ ctrl- gain.',
   },
   G: {
     title: 'VCCS',
-    valueLabel: 'Transconductance',
+    valueLabel: 'Gain',
     placeholder: '1m',
     helper: 'Nguon dong phu thuoc ap: G out+ out- ctrl+ ctrl- gain.',
   },
   F: {
     title: 'CCCS',
-    valueLabel: 'Control Source + Gain',
-    placeholder: 'V1 1',
-    helper: 'Nguon dong phu thuoc dong: nhap ten nguon ap dieu khien va he so, vi du V1 2.',
+    helper: 'Nguon dong phu thuoc dong: F out+ out- Vctrl gain.',
   },
   H: {
     title: 'CCVS',
-    valueLabel: 'Control Source + Gain',
-    placeholder: 'V1 1',
-    helper: 'Nguon ap phu thuoc dong: nhap ten nguon ap dieu khien va he so, vi du V1 100.',
+    helper: 'Nguon ap phu thuoc dong: H out+ out- Vctrl gain.',
   },
   D: {
     title: 'Diode',
@@ -114,10 +136,32 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
     );
   }
 
+  const meta = componentMeta[selected.type] ?? { title: selected.type };
+  const isIndependentSource = selected.type === 'V' || selected.type === 'I';
+  const isCurrentControlled = selected.type === 'F' || selected.type === 'H';
+  const source = selected.source ?? defaultSource(selected.type, selected.value);
+  const dependent = selected.dependent ?? { vctrl: 'V1', gain: selected.value || '1' };
+  const canEditValue = Boolean(meta.valueLabel);
+
+  function update(updated: Partial<CircuitComponent>) {
+    onUpdate({ ...selected!, ...updated });
+  }
+
+  function updateSource(next: SourceConfig) {
+    onUpdate({ ...selected!, source: next, value: sourceSummary(next) });
+  }
+
+  function setSource<K extends keyof SourceConfig>(key: K, value: SourceConfig[K]) {
+    updateSource({ ...source, [key]: value });
+  }
+
+  function updateDependent(next: { vctrl: string; gain: string }) {
+    onUpdate({ ...selected!, dependent: next, value: `${next.vctrl} ${next.gain}` });
+  }
+
   function rotate() {
     const newRot = (((selected!.rotation || 0) + 90) % 360) as 0 | 90 | 180 | 270;
-    onUpdate({
-      ...selected!,
+    update({
       rotation: newRot,
       pins: updatePins(selected!.x, selected!.y, newRot, selected!.type),
     });
@@ -125,8 +169,7 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
 
   function flipX() {
     const newRot = (((selected!.rotation || 0) + 180) % 360) as 0 | 90 | 180 | 270;
-    onUpdate({
-      ...selected!,
+    update({
       flipX: !selected!.flipX,
       rotation: newRot,
       pins: updatePins(selected!.x, selected!.y, newRot, selected!.type),
@@ -135,16 +178,12 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
 
   function flipY() {
     const newRot = (((selected!.rotation || 0) + 180) % 360) as 0 | 90 | 180 | 270;
-    onUpdate({
-      ...selected!,
+    update({
       flipY: !selected!.flipY,
       rotation: newRot,
       pins: updatePins(selected!.x, selected!.y, newRot, selected!.type),
     });
   }
-
-  const meta = componentMeta[selected.type] ?? { title: selected.type };
-  const canEditValue = Boolean(meta.valueLabel);
 
   return (
     <div className="properties">
@@ -153,7 +192,7 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
       <label>Name</label>
       <input
         value={selected.id}
-        onChange={(e) => onUpdate({ ...selected, id: e.target.value })}
+        onChange={(e) => update({ id: e.target.value })}
         onKeyDown={(e) => e.stopPropagation()}
       />
 
@@ -163,16 +202,139 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
           <input
             value={selected.value}
             placeholder={meta.placeholder}
-            onChange={(e) => onUpdate({ ...selected, value: e.target.value })}
+            onChange={(e) => update({ value: e.target.value })}
             onKeyDown={(e) => e.stopPropagation()}
           />
-          {meta.helper && <p className="fieldHint">{meta.helper}</p>}
         </>
       )}
 
-      {!canEditValue && meta.helper && (
-        <p className="fieldHint">{meta.helper}</p>
+      {isIndependentSource && (
+        <>
+          <label>Waveform</label>
+          <div className="modeTabs">
+            {(['DC', 'AC', 'PULSE', 'SIN'] as SourceMode[]).map(mode => (
+              <button
+                key={mode}
+                className={source.mode === mode ? 'active' : ''}
+                onClick={() => setSource('mode', mode)}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
+          {source.mode === 'DC' && (
+            <>
+              <label>{selected.type === 'V' ? 'Voltage (V)' : 'Current (A)'}</label>
+              <input value={source.dc} onChange={e => setSource('dc', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+            </>
+          )}
+
+          {source.mode === 'AC' && (
+            <div className="propertyGrid">
+              <div>
+                <label>DC Offset</label>
+                <input value={source.dc} onChange={e => setSource('dc', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>AC Magnitude</label>
+                <input value={source.acMag} onChange={e => setSource('acMag', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>AC Phase</label>
+                <input value={source.acPhase} onChange={e => setSource('acPhase', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+            </div>
+          )}
+
+          {source.mode === 'PULSE' && (
+            <div className="propertyGrid">
+              <div>
+                <label>Initial</label>
+                <input value={source.pulseInitial} onChange={e => setSource('pulseInitial', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Pulsed</label>
+                <input value={source.pulsePulsed} onChange={e => setSource('pulsePulsed', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Delay</label>
+                <input value={source.pulseDelay} onChange={e => setSource('pulseDelay', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Rise</label>
+                <input value={source.pulseRise} onChange={e => setSource('pulseRise', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Fall</label>
+                <input value={source.pulseFall} onChange={e => setSource('pulseFall', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Width</label>
+                <input value={source.pulseWidth} onChange={e => setSource('pulseWidth', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Period</label>
+                <input value={source.pulsePeriod} onChange={e => setSource('pulsePeriod', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+            </div>
+          )}
+
+          {source.mode === 'SIN' && (
+            <div className="propertyGrid">
+              <div>
+                <label>Offset</label>
+                <input value={source.sinOffset} onChange={e => setSource('sinOffset', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Amplitude</label>
+                <input value={source.sinAmplitude} onChange={e => setSource('sinAmplitude', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Frequency</label>
+                <input value={source.sinFrequency} onChange={e => setSource('sinFrequency', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Delay</label>
+                <input value={source.sinDelay} onChange={e => setSource('sinDelay', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Damping</label>
+                <input value={source.sinDamping} onChange={e => setSource('sinDamping', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+              <div>
+                <label>Phase</label>
+                <input value={source.sinPhase} onChange={e => setSource('sinPhase', e.target.value)} onKeyDown={e => e.stopPropagation()} />
+              </div>
+            </div>
+          )}
+        </>
       )}
+
+      {isCurrentControlled && (
+        <div className="propertyGrid">
+          <div>
+            <label>Vctrl</label>
+            <input
+              value={dependent.vctrl}
+              placeholder="V1"
+              onChange={e => updateDependent({ ...dependent, vctrl: e.target.value })}
+              onKeyDown={e => e.stopPropagation()}
+            />
+          </div>
+          <div>
+            <label>Gain</label>
+            <input
+              value={dependent.gain}
+              placeholder="1"
+              onChange={e => updateDependent({ ...dependent, gain: e.target.value })}
+              onKeyDown={e => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+
+      {meta.helper && <p className="fieldHint">{meta.helper}</p>}
 
       <div className="button-group" style={{ marginTop: 12 }}>
         <button onClick={rotate}>Rotate</button>
