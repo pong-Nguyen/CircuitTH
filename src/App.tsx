@@ -333,13 +333,15 @@ export default function App() {
           </div>
         </div>
 
-        <div className="rightPanel">
-          <PropertiesPanel
-            selected={selectedComponent}
-            onUpdate={updateComponent}
-            onDelete={deleteSelectedComponent}
-            language={language}
-          />
+        <div className={selectedComponent ? 'rightPanel open' : 'rightPanel'}>
+          {selectedComponent && (
+            <PropertiesPanel
+              selected={selectedComponent}
+              onUpdate={updateComponent}
+              onDelete={deleteSelectedComponent}
+              language={language}
+            />
+          )}
         </div>
       </div>
     </div>
