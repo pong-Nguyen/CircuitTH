@@ -213,29 +213,6 @@ export default function Canvas({
 
   // ─── Drawing ──────────────────────────────────────────────────────────────
 
-  function drawGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
-    const { offsetX, offsetY, scale } = viewport;
-    // World coordinates of visible corners
-    const x0 = (-offsetX / scale);
-    const y0 = (-offsetY / scale);
-    const x1 = (w - offsetX) / scale;
-    const y1 = (h - offsetY) / scale;
-
-    const startX = Math.floor(x0 / GRID) * GRID;
-    const startY = Math.floor(y0 / GRID) * GRID;
-
-    ctx.fillStyle = '#bbb';
-    for (let wx = startX; wx <= x1; wx += GRID) {
-      for (let wy = startY; wy <= y1; wy += GRID) {
-        const sx = wx * scale + offsetX;
-        const sy = wy * scale + offsetY;
-        ctx.beginPath();
-        ctx.arc(sx, sy, Math.max(0.8, scale), 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-  }
-
   function drawGnd(ctx: CanvasRenderingContext2D) {
     // Vertical stem from pin (top) down
     const stemLen = GRID * 0.8;
@@ -424,9 +401,6 @@ export default function Canvas({
     const { offsetX, offsetY, scale } = viewport;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw grid in screen-space (handles dots at all zoom levels)
-    drawGrid(ctx, canvas.width, canvas.height);
 
     // Apply viewport transform for all world-space elements
     ctx.save();

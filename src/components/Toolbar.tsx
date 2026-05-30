@@ -39,14 +39,20 @@ interface Props {
   onConfigChange: (cfg: SimConfig) => void;
   consoleOpen: boolean;
   onToggleConsole: () => void;
+  waveformOpen: boolean;
+  onToggleWaveform: () => void;
   onClear: () => void;
+  language: 'vi' | 'en';
+  onLanguageChange: (language: 'vi' | 'en') => void;
 }
 
 export default function Toolbar({
   loading, onRun,
   config, onConfigChange,
   consoleOpen, onToggleConsole,
+  waveformOpen, onToggleWaveform,
   onClear,
+  language, onLanguageChange,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<SimConfig>(config);
@@ -152,6 +158,23 @@ export default function Toolbar({
 
         <div style={{ flex: 1 }} />
 
+        <select
+          value={language}
+          onChange={event => onLanguageChange(event.target.value as 'vi' | 'en')}
+          title="Language"
+          style={{
+            background: '#1e2030',
+            border: '1px solid #3a3d4a',
+            borderRadius: 6,
+            color: '#ccc',
+            padding: '6px 8px',
+            fontSize: 13,
+          }}
+        >
+          <option value="en">English</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+
         <button
           onClick={onClear}
           title="Clear schematic"
@@ -164,7 +187,23 @@ export default function Toolbar({
             <path d="M8 6V4h8v2"/>
             <path d="M19 6l-1 14H6L5 6"/>
           </svg>
-          Clear
+          {language === 'vi' ? 'Xoa' : 'Clear'}
+        </button>
+
+        <button
+          onClick={onToggleWaveform}
+          title="Toggle Waveform"
+          style={{
+            ...btnBase,
+            borderColor: waveformOpen ? '#2563eb' : '#3a3d4a',
+            background: waveformOpen ? '#1e2a4a' : '#1e2030',
+            color: waveformOpen ? '#60a5fa' : '#ccc',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12h4l3-7 4 14 3-7h4"/>
+          </svg>
+          Waveform
         </button>
 
         {/* Console toggle */}

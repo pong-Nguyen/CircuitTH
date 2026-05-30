@@ -62,6 +62,7 @@ interface Props {
   selected: CircuitComponent | null;
   onUpdate: (updated: CircuitComponent) => void;
   onDelete: () => void;
+  language?: 'vi' | 'en';
 }
 
 const componentMeta: Record<string, {
@@ -126,12 +127,16 @@ const componentMeta: Record<string, {
   },
 };
 
-export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props) {
+export default function PropertiesPanel({ selected, onUpdate, onDelete, language = 'en' }: Props) {
+  const ui = language === 'vi'
+    ? { properties: 'Thuoc tinh', none: 'Chua chon linh kien', name: 'Ten', delete: 'Xoa linh kien' }
+    : { properties: 'Properties', none: 'No component selected', name: 'Name', delete: 'Delete Component' };
+
   if (!selected) {
     return (
       <div className="properties">
-        <h3>Properties</h3>
-        <p>No component selected</p>
+        <h3>{ui.properties}</h3>
+        <p>{ui.none}</p>
       </div>
     );
   }
@@ -187,9 +192,9 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
 
   return (
     <div className="properties">
-      <h3>Properties - {meta.title}</h3>
+      <h3>{ui.properties} - {meta.title}</h3>
 
-      <label>Name</label>
+      <label>{ui.name}</label>
       <input
         value={selected.id}
         onChange={(e) => update({ id: e.target.value })}
@@ -343,7 +348,7 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete }: Props)
       </div>
 
       <button className="deleteBtn" onClick={onDelete}>
-        Delete Component
+        {ui.delete}
       </button>
     </div>
   );

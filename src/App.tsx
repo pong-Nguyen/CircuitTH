@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
+import type React from 'react';
 import './App.css';
 import Sidebar from './components/Sidebar';
 import Canvas from './components/Canvas';
 import PropertiesPanel from './components/PropertiesPanel';
 import Toolbar, { defaultConfig } from './components/Toolbar';
+import WaveformPanel from './components/WaveformPanel';
 import type { SimConfig } from './components/Toolbar';
 import type { CircuitComponent, Wire } from './types';
 import { generateNetlist } from './utils/netlist';
@@ -19,9 +21,13 @@ export default function App() {
 
   // ── Simulation ────────────────────────────────────────────────
   const [simConfig, setSimConfig] = useState<SimConfig>(defaultConfig);
-  const [, setResult] = useState<SimulationResult | null>(null);
+  const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [consoleOpen, setConsoleOpen] = useState(false);
+  const [waveformOpen, setWaveformOpen] = useState(false);
+  const [language, setLanguage] = useState<'vi' | 'en'>('en');
+  const [consoleHeight, setConsoleHeight] = useState(210);
+  const [waveformHeight, setWaveformHeight] = useState(320);
   const [consoleLines, setConsoleLines] = useState<string[]>([]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
@@ -49,6 +55,28 @@ export default function App() {
     setSelectedWire(null);
     setSelectedTool(null);
     setConsoleLines([]);
+    setResult(null);
+  }
+
+  function startVerticalResize(
+    event: React.MouseEvent<HTMLDivElement>,
+    currentHeight: number,
+    setter: React.Dispatch<React.SetStateAction<number>>,
+    min = 120,
+    max = 620,
+  ) {
+    event.preventDefault();
+    const startY = event.clientY;
+    const onMove = (moveEvent: MouseEvent) => {
+      const next = Math.max(min, Math.min(max, currentHeight + startY - moveEvent.clientY));
+      setter(next);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }
 
   //function deleteSelectedWire() {
@@ -85,6 +113,7 @@ export default function App() {
       const engine = await getEngine();
       const res = engine.simulate(netlist);
       setResult(res);
+      if (res.success) setWaveformOpen(true);
 
       if (!res.success) {
         log('✗ Error: ' + res.error_msg);
@@ -162,10 +191,14 @@ export default function App() {
         onConfigChange={setSimConfig}
         consoleOpen={consoleOpen}
         onToggleConsole={() => setConsoleOpen(v => !v)}
+        waveformOpen={waveformOpen}
+        onToggleWaveform={() => setWaveformOpen(v => !v)}
         onClear={clearSchematic}
+        language={language}
+        onLanguageChange={setLanguage}
       />
 
-      <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} />
+      <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} language={language} />
 
       <div className="content">
         <div className="main">
@@ -185,17 +218,30 @@ export default function App() {
               />
             </div>
 
+            <WaveformPanel
+              result={result}
+              open={waveformOpen}
+              height={waveformHeight}
+              language={language}
+              onClose={() => setWaveformOpen(false)}
+              onResizeStart={event => startVerticalResize(event, waveformHeight, setWaveformHeight, 160, 720)}
+            />
+
             {consoleOpen && (
-              <div style={{
-                height: '38%',
+              <div className="consolePanel" style={{
+                height: consoleHeight,
                 minHeight: 120,
-                maxHeight: '60%',
+                maxHeight: 620,
                 background: '#0f1117',
                 borderTop: '2px solid #2563eb',
                 display: 'flex',
                 flexDirection: 'column',
                 flexShrink: 0,
               }}>
+                <div
+                  className="panelResizeHandle"
+                  onMouseDown={event => startVerticalResize(event, consoleHeight, setConsoleHeight, 120, 620)}
+                />
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -271,6 +317,7 @@ export default function App() {
             selected={selectedComponent}
             onUpdate={updateComponent}
             onDelete={deleteSelectedComponent}
+            language={language}
           />
         </div>
       </div>

@@ -3,6 +3,7 @@ import { useState } from 'react';
 interface Props {
   selectedTool: string | null;
   setSelectedTool: (tool: string | null) => void;
+  language?: 'vi' | 'en';
 }
 
 type ToolId = 'R' | 'C' | 'L' | 'V' | 'I' | 'E' | 'F' | 'G' | 'H' | 'D' | 'GND' | 'wire';
@@ -17,46 +18,52 @@ const quickTools: Array<{ type: ToolId; name: string; shortcut?: string }> = [
   { type: 'wire', name: 'Wire', shortcut: 'W' },
 ];
 
-const libraryGroups: Array<{ title: string; items: Array<{ type: ToolId; name: string; description: string }> }> = [
+const libraryGroups: Array<{ title: string; titleVi: string; items: Array<{ type: ToolId; name: string; description: string; descriptionVi: string }> }> = [
   {
     title: 'Passive',
+    titleVi: 'Linh kien thu dong',
     items: [
-      { type: 'R', name: 'Resistor', description: 'Dien tro' },
-      { type: 'C', name: 'Capacitor', description: 'Tu dien' },
-      { type: 'L', name: 'Inductor', description: 'Cuon cam' },
+      { type: 'R', name: 'Resistor', description: 'Resistance', descriptionVi: 'Dien tro' },
+      { type: 'C', name: 'Capacitor', description: 'Capacitance', descriptionVi: 'Tu dien' },
+      { type: 'L', name: 'Inductor', description: 'Inductance', descriptionVi: 'Cuon cam' },
     ],
   },
   {
     title: 'Independent Sources',
+    titleVi: 'Nguon doc lap',
     items: [
-      { type: 'V', name: 'Voltage Source', description: 'Nguon ap DC' },
-      { type: 'I', name: 'Current Source', description: 'Nguon dong DC' },
+      { type: 'V', name: 'Voltage Source', description: 'DC, AC, PULSE, SIN', descriptionVi: 'DC, AC, PULSE, SIN' },
+      { type: 'I', name: 'Current Source', description: 'DC, AC, PULSE, SIN', descriptionVi: 'DC, AC, PULSE, SIN' },
     ],
   },
   {
     title: 'Dependent Sources',
+    titleVi: 'Nguon phu thuoc ap',
     items: [
-      { type: 'E', name: 'VCVS', description: 'Voltage-controlled voltage source' },
-      { type: 'G', name: 'VCCS', description: 'Voltage-controlled current source' },
+      { type: 'E', name: 'VCVS', description: 'Voltage-controlled voltage source', descriptionVi: 'Nguon ap dieu khien bang ap' },
+      { type: 'G', name: 'VCCS', description: 'Voltage-controlled current source', descriptionVi: 'Nguon dong dieu khien bang ap' },
     ],
   },
   {
     title: 'Current-Controlled Sources',
+    titleVi: 'Nguon phu thuoc dong',
     items: [
-      { type: 'F', name: 'CCCS', description: 'Current-controlled current source' },
-      { type: 'H', name: 'CCVS', description: 'Current-controlled voltage source' },
+      { type: 'F', name: 'CCCS', description: 'Current-controlled current source', descriptionVi: 'Nguon dong dieu khien bang dong' },
+      { type: 'H', name: 'CCVS', description: 'Current-controlled voltage source', descriptionVi: 'Nguon ap dieu khien bang dong' },
     ],
   },
   {
     title: 'Semiconductor',
+    titleVi: 'Ban dan',
     items: [
-      { type: 'D', name: 'Diode', description: 'Diode mac dinh' },
+      { type: 'D', name: 'Diode', description: 'Default diode', descriptionVi: 'Diode mac dinh' },
     ],
   },
   {
     title: 'Reference',
+    titleVi: 'Diem tham chieu',
     items: [
-      { type: 'GND', name: 'Ground', description: 'Node 0' },
+      { type: 'GND', name: 'Ground', description: 'Node 0', descriptionVi: 'Node 0' },
     ],
   },
 ];
@@ -89,8 +96,9 @@ function ToolIcon({ type }: { type: ToolId | 'IC' }) {
   );
 }
 
-export default function Sidebar({ selectedTool, setSelectedTool }: Props) {
+export default function Sidebar({ selectedTool, setSelectedTool, language = 'en' }: Props) {
   const [libraryOpen, setLibraryOpen] = useState(false);
+  const isVi = language === 'vi';
 
   function toggle(tool: ToolId) {
     setSelectedTool(selectedTool === tool ? null : tool);
@@ -131,22 +139,22 @@ export default function Sidebar({ selectedTool, setSelectedTool }: Props) {
           <div className="libraryDialog" onClick={event => event.stopPropagation()}>
             <div className="libraryHeader">
               <div>
-                <h3>Component Library</h3>
-                <p>Chon linh kien can dat vao schematic.</p>
+                <h3>{isVi ? 'Thu vien linh kien' : 'Component Library'}</h3>
+                <p>{isVi ? 'Chon linh kien can dat vao schematic.' : 'Choose a component to place on the schematic.'}</p>
               </div>
               <button onClick={() => setLibraryOpen(false)} title="Close">x</button>
             </div>
 
             {libraryGroups.map(group => (
               <section className="libraryGroup" key={group.title}>
-                <h4>{group.title}</h4>
+                <h4>{isVi ? group.titleVi : group.title}</h4>
                 <div className="libraryGrid">
                   {group.items.map(item => (
                     <button key={item.type} onClick={() => choose(item.type)}>
                       <span className="libraryIcon"><ToolIcon type={item.type} /></span>
                       <span>
                         <strong>{item.name}</strong>
-                        <small>{item.description}</small>
+                        <small>{isVi ? item.descriptionVi : item.description}</small>
                       </span>
                     </button>
                   ))}

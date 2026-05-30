@@ -279,6 +279,104 @@ body {
   display: flex;
 }
 
+.waveformPanel,
+.consolePanel {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.waveformPanel {
+  min-height: 160px;
+  background: #0f1117;
+  border-top: 2px solid #2563eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.panelResizeHandle {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  z-index: 5;
+}
+
+.waveformHeader {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #151a25;
+  border-bottom: 1px solid #2a2d3a;
+  color: #e5e7eb;
+  box-sizing: border-box;
+}
+
+.waveformHeader strong,
+.waveformHeader span {
+  display: block;
+}
+
+.waveformHeader strong {
+  font-size: 13px;
+  color: #93c5fd;
+}
+
+.waveformHeader span {
+  margin-top: 2px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.waveformHeader button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  color: #cbd5e1;
+  background: #111827;
+  cursor: pointer;
+}
+
+.nodePicker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: #0f1117;
+  border-bottom: 1px solid #1f2937;
+}
+
+.nodePicker label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #d1d5db;
+  border: 1px solid #334155;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.plotSurface {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.emptyWaveform {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 13px;
+}
+
 .selectionTaskbar {
   position: absolute;
   z-index: 20;
