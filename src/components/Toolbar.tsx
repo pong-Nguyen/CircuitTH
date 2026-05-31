@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import logo from '@/assets/logo.png';
+import type { StoredCircuit } from '../lib/circuitStorage';
 
 export interface SimConfig {
   mode: 'op' | 'dc' | 'tran' | 'ac';
@@ -41,6 +42,14 @@ interface Props {
   onClear: () => void;
   language: 'vi' | 'en';
   onLanguageChange: (language: 'vi' | 'en') => void;
+  circuits: StoredCircuit[];
+  activeCircuitId: string | null;
+  savingState: 'idle' | 'saving' | 'saved';
+  onCircuitChange: (id: string) => void;
+  onNewCircuit: () => void;
+  onRenameCircuit: () => void;
+  onDeleteCircuit: () => void;
+  onSaveCircuit: () => void;
 }
 
 export default function Toolbar({
@@ -55,6 +64,14 @@ export default function Toolbar({
   onClear,
   language,
   onLanguageChange,
+  circuits,
+  activeCircuitId,
+  savingState,
+  onCircuitChange,
+  onNewCircuit,
+  onRenameCircuit,
+  onDeleteCircuit,
+  onSaveCircuit,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<SimConfig>(config);
@@ -79,6 +96,13 @@ export default function Toolbar({
     cancel: vi ? 'Hủy' : 'Cancel',
     apply: vi ? 'Áp dụng' : 'Apply',
     noParams: vi ? 'Operating Point không có tham số bổ sung.' : 'Operating Point analysis has no additional parameters.',
+    newCircuit: vi ? 'Mạch mới' : 'New',
+    renameCircuit: vi ? 'Đổi tên' : 'Rename',
+    saveCircuit: vi ? 'Lưu' : 'Save',
+    deleteCircuit: vi ? 'Xóa mạch' : 'Delete circuit',
+    circuitFiles: vi ? 'File mạch' : 'Circuit files',
+    saving: vi ? 'Đang lưu...' : 'Saving...',
+    saved: vi ? 'Đã lưu' : 'Saved',
   };
 
   function openModal() {
@@ -165,6 +189,37 @@ export default function Toolbar({
 
         <div style={{ width: 1, height: 24, background: '#2a2d3a', flexShrink: 0 }} />
         <span className="modeStatus">.{config.mode.toUpperCase()}</span>
+        <div className="circuitFileControls" title={t.circuitFiles}>
+          <select
+            value={activeCircuitId ?? ''}
+            onChange={event => onCircuitChange(event.target.value)}
+            disabled={circuits.length === 0}
+            aria-label={t.circuitFiles}
+          >
+            {circuits.map(circuit => (
+              <option key={circuit.id} value={circuit.id}>{circuit.name}</option>
+            ))}
+          </select>
+          <button onClick={onNewCircuit} title={t.newCircuit}>+</button>
+          <button onClick={onRenameCircuit} title={t.renameCircuit}>Aa</button>
+          <button onClick={onSaveCircuit} title={t.saveCircuit}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <path d="M17 21v-8H7v8" />
+              <path d="M7 3v5h8" />
+            </svg>
+          </button>
+          <button onClick={onDeleteCircuit} title={t.deleteCircuit}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 6h18" />
+              <path d="M8 6V4h8v2" />
+              <path d="M19 6l-1 14H6L5 6" />
+            </svg>
+          </button>
+          <span className="saveStatus">
+            {savingState === 'saving' ? t.saving : savingState === 'saved' ? t.saved : ''}
+          </span>
+        </div>
         <div style={{ flex: 1 }} />
 
         <select

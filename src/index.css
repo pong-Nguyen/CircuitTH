@@ -98,6 +98,58 @@ body {
   letter-spacing: 0.08em;
 }
 
+.circuitFileControls {
+  min-width: 280px;
+  max-width: 460px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 4px;
+  flex: 1 1 360px;
+}
+
+.circuitFileControls select {
+  min-width: 140px;
+  flex: 1;
+  height: 32px;
+  box-sizing: border-box;
+  background: #1e2030;
+  border: 1px solid #3a3d4a;
+  border-radius: 6px;
+  color: #e5e7eb;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+.circuitFileControls button {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid #3a3d4a;
+  border-radius: 6px;
+  background: #1e2030;
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.circuitFileControls button:hover {
+  border-color: #60a5fa;
+  color: #93c5fd;
+}
+
+.saveStatus {
+  width: 74px;
+  flex: 0 0 74px;
+  color: #93a4bb;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .modalOverlay {
   position: fixed;
   inset: 0;

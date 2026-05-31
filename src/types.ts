@@ -77,3 +77,13 @@ export interface CircuitComponent {
 
   pins: Pin[];
 }
+
+export interface CircuitDocument {
+  id: string;
+  name: string;
+  components: CircuitComponent[];
+  wires: Wire[];
+  simConfig: unknown;
+  createdAt: number;
+  updatedAt: number;
+}

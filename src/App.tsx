@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import './App.css';
 import Sidebar from './components/Sidebar';
@@ -11,6 +11,14 @@ import type { CircuitComponent, Wire } from './types';
 import { generateNetlist } from './utils/netlist';
 import { getEngine, CircuitEngine } from './lib/circuitEngine';
 import type { SimulationResult } from './lib/circuitEngine';
+import {
+  createCircuit,
+  deleteCircuit,
+  getActiveCircuitId,
+  listCircuits,
+  saveCircuit,
+  type StoredCircuit,
+} from './lib/circuitStorage';
 
 export default function App() {
   const [components, setComponents] = useState<CircuitComponent[]>([]);
@@ -29,6 +37,10 @@ export default function App() {
   const [consoleHeight, setConsoleHeight] = useState(210);
   const [waveformWidth, setWaveformWidth] = useState(560);
   const [consoleLines, setConsoleLines] = useState<string[]>([]);
+  const [circuits, setCircuits] = useState<StoredCircuit[]>([]);
+  const [activeCircuitId, setActiveCircuitId] = useState<string | null>(null);
+  const [storageReady, setStorageReady] = useState(false);
+  const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
   function log(line: string) {
@@ -40,6 +52,94 @@ export default function App() {
   function updateComponent(updated: CircuitComponent) {
     setComponents(prev => prev.map(c => c.uuid === updated.uuid ? updated : c));
     setSelectedComponent(updated);
+  }
+
+  function loadCircuit(circuit: StoredCircuit) {
+    setActiveCircuitId(circuit.id);
+    setComponents(circuit.components);
+    setWires(circuit.wires);
+    setSimConfig(circuit.simConfig);
+    setSelectedComponent(null);
+    setSelectedWire(null);
+    setSelectedTool(null);
+    setResult(null);
+    setConsoleLines([]);
+    localStorage.setItem('circuitth.activeCircuitId', circuit.id);
+  }
+
+  function updateCircuitList(next: StoredCircuit) {
+    setCircuits(prev => {
+      const withoutCurrent = prev.filter(item => item.id !== next.id);
+      return [next, ...withoutCurrent].sort((a, b) => b.updatedAt - a.updatedAt);
+    });
+  }
+
+  async function createNewCircuit() {
+    const name = window.prompt(language === 'vi' ? 'Tên mạch mới:' : 'New circuit name:', `Circuit ${circuits.length + 1}`);
+    if (!name) return;
+    const next = createCircuit(name.trim(), {
+      components: [],
+      wires: [],
+      simConfig: defaultConfig,
+    });
+    await saveCircuit(next);
+    updateCircuitList(next);
+    loadCircuit(next);
+  }
+
+  async function renameCurrentCircuit() {
+    const current = circuits.find(item => item.id === activeCircuitId);
+    if (!current) return;
+    const name = window.prompt(language === 'vi' ? 'Đổi tên mạch:' : 'Rename circuit:', current.name);
+    if (!name) return;
+    const next = { ...current, name: name.trim(), updatedAt: Date.now() };
+    await saveCircuit(next);
+    updateCircuitList(next);
+  }
+
+  async function deleteCurrentCircuit() {
+    if (!activeCircuitId) return;
+    const current = circuits.find(item => item.id === activeCircuitId);
+    if (!current) return;
+    const ok = window.confirm(
+      language === 'vi'
+        ? `Xóa mạch "${current.name}" khỏi máy này?`
+        : `Delete "${current.name}" from this device?`,
+    );
+    if (!ok) return;
+    await deleteCircuit(activeCircuitId);
+    const remaining = circuits.filter(item => item.id !== activeCircuitId);
+    if (remaining.length > 0) {
+      setCircuits(remaining);
+      loadCircuit(remaining[0]);
+      return;
+    }
+    const next = createCircuit('Untitled Circuit', {
+      components: [],
+      wires: [],
+      simConfig: defaultConfig,
+    });
+    await saveCircuit(next);
+    setCircuits([next]);
+    loadCircuit(next);
+  }
+
+  async function forceSaveCircuit() {
+    if (!activeCircuitId) return;
+    const current = circuits.find(item => item.id === activeCircuitId);
+    const next: StoredCircuit = {
+      id: activeCircuitId,
+      name: current?.name ?? 'Untitled Circuit',
+      components,
+      wires,
+      simConfig,
+      createdAt: current?.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    };
+    setSavingState('saving');
+    await saveCircuit(next);
+    updateCircuitList(next);
+    setSavingState('saved');
   }
 
   function deleteSelectedComponent() {
@@ -57,6 +157,72 @@ export default function App() {
     setConsoleLines([]);
     setResult(null);
   }
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrate() {
+      const stored = await listCircuits();
+      if (cancelled) return;
+
+      if (stored.length === 0) {
+        const next = createCircuit('Untitled Circuit', {
+          components: [],
+          wires: [],
+          simConfig: defaultConfig,
+        });
+        await saveCircuit(next);
+        if (cancelled) return;
+        setCircuits([next]);
+        loadCircuit(next);
+      } else {
+        const activeId = getActiveCircuitId();
+        const active = stored.find(item => item.id === activeId) ?? stored[0];
+        setCircuits(stored);
+        loadCircuit(active);
+      }
+
+      setStorageReady(true);
+    }
+
+    hydrate().catch(error => {
+      console.error('Failed to load local circuits', error);
+      setStorageReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady || !activeCircuitId) return;
+    const current = circuits.find(item => item.id === activeCircuitId);
+    const next: StoredCircuit = {
+      id: activeCircuitId,
+      name: current?.name ?? 'Untitled Circuit',
+      components,
+      wires,
+      simConfig,
+      createdAt: current?.createdAt ?? Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    setSavingState('saving');
+    const timer = window.setTimeout(() => {
+      saveCircuit(next)
+        .then(() => {
+          updateCircuitList(next);
+          setSavingState('saved');
+        })
+        .catch(error => {
+          console.error('Failed to save local circuit', error);
+          setSavingState('idle');
+        });
+    }, 350);
+
+    return () => window.clearTimeout(timer);
+  }, [components, wires, simConfig, storageReady, activeCircuitId]);
 
   function startVerticalResize(
     event: React.MouseEvent<HTMLDivElement>,
@@ -217,6 +383,17 @@ export default function App() {
         onClear={clearSchematic}
         language={language}
         onLanguageChange={setLanguage}
+        circuits={circuits}
+        activeCircuitId={activeCircuitId}
+        savingState={savingState}
+        onCircuitChange={id => {
+          const circuit = circuits.find(item => item.id === id);
+          if (circuit) loadCircuit(circuit);
+        }}
+        onNewCircuit={createNewCircuit}
+        onRenameCircuit={renameCurrentCircuit}
+        onDeleteCircuit={deleteCurrentCircuit}
+        onSaveCircuit={forceSaveCircuit}
       />
 
       <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} language={language} />
