@@ -84,6 +84,14 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
     }
   }
 
+  if (!components.some(c => c.type === 'GND')) {
+    const reference = components.find(c => c.type !== 'GND' && c.pins[0]);
+    if (reference) {
+      const root = uf.find(ptKey(reference.pins[0].x, reference.pins[0].y));
+      nodeMap.set(root, '0');
+    }
+  }
+
   function getNode(pin: Pin) {
     const root = uf.find(ptKey(pin.x, pin.y));
     if (!nodeMap.has(root)) nodeMap.set(root, `n${counter++}`);
