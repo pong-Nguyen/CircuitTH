@@ -1,7 +1,9 @@
 import type { CircuitComponent, Pin, Wire } from '../types';
 import { UnionFind } from './unionFind';
 
-function ptKey(x: number, y: number) { return `${x},${y}`; }
+function ptKey(x: number, y: number) {
+  return `${x},${y}`;
+}
 
 function distToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number) {
   const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
@@ -38,7 +40,6 @@ function ledModelLine(color = 'red') {
 export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
   const uf = new UnionFind();
 
-  // 1. Connect every consecutive pair of points within each wire
   for (const wire of wires) {
     for (let i = 0; i < wire.points.length - 1; i++) {
       const a = wire.points[i], b = wire.points[i + 1];
@@ -46,7 +47,6 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
     }
   }
 
-  // 2. Wire-to-wire T-junction: any point of wireA that lies on a segment of wireB
   for (const wireA of wires) {
     for (const pt of wireA.points) {
       for (const wireB of wires) {
@@ -61,7 +61,6 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
     }
   }
 
-  // 3. Pin-to-wire: pin lying on a wire segment
   for (const c of components) {
     for (const pin of c.pins) {
       for (const wire of wires) {
@@ -75,8 +74,6 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
     }
   }
 
-  // 4. Pre-assign node "0" (GND) to any pin belonging to a GND component
-  //    so all nets connected to GND become "0" automatically.
   const nodeMap = new Map<string, string>();
   let counter = 1;
 
@@ -93,45 +90,9 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
     return nodeMap.get(root)!;
   }
 
-  // 5. Build lines (GND is not a SPICE element — it only sets node names)
-  const lines: string[] = [];
-  for (const c of components) {
-    if (c.type === 'GND') continue;
-    const n1 = getNode(c.pins[0]);
-    const n2 = getNode(c.pins[1]);
-    if (c.type === 'R') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
-    if (c.type === 'C') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
-    if (c.type === 'L') lines.push(`${c.id} ${n1} ${n2} ${c.value}`);
-    if (c.type === 'V') lines.push(`${c.id} ${n1} ${n2} ${sourceExpression(c)}`);
-    if (c.type === 'I') lines.push(`${c.id} ${n1} ${n2} ${sourceExpression(c)}`);
-    if (c.type === 'E' && c.pins[2] && c.pins[3]) {
-      lines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
-    }
-    if (c.type === 'G' && c.pins[2] && c.pins[3]) {
-      lines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
-    }
-    if (c.type === 'F') {
-      const dep = c.dependent ?? { vctrl: 'V1', gain: c.value || '1' };
-      lines.push(`${c.id} ${n1} ${n2} ${dep.vctrl} ${dep.gain}`);
-    }
-    if (c.type === 'H') {
-      const dep = c.dependent ?? { vctrl: 'V1', gain: c.value || '1' };
-      lines.push(`${c.id} ${n1} ${n2} ${dep.vctrl} ${dep.gain}`);
-    }
-    if (c.type === 'D') lines.push(`${c.id} ${n1} ${n2} Ddefault`);
-    if (c.type === 'LED') {
-      const color = c.led?.color ?? 'red';
-      const diodeId = c.id.startsWith('D') ? c.id : `D${c.id}`;
-      lines.push(`${diodeId} ${n1} ${n2} ${ledModelName(color)}`);
-    }
-    if (c.type === 'K') {
-      const switchId = c.id.startsWith('R') ? c.id : `R${c.id}`;
-      lines.push(`${switchId} ${n1} ${n2} ${c.switch?.closed ? '1m' : '1e12'}`);
-    }
-  }
-
+  const modelLines: string[] = [];
   if (components.some(c => c.type === 'D')) {
-    lines.push('.model Ddefault D');
+    modelLines.push('.model Ddefault D');
   }
 
   const ledColors = new Set(
@@ -140,9 +101,46 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
       .map(c => c.led?.color ?? 'red'),
   );
   for (const color of ledColors) {
-    lines.push(ledModelLine(color));
+    modelLines.push(ledModelLine(color));
   }
 
-  lines.push('', '.op', '.end');
+  const elementLines: string[] = [];
+  for (const c of components) {
+    if (c.type === 'GND') continue;
+    const n1 = getNode(c.pins[0]);
+    const n2 = getNode(c.pins[1]);
+
+    if (c.type === 'R') elementLines.push(`${c.id} ${n1} ${n2} ${c.value}`);
+    if (c.type === 'C') elementLines.push(`${c.id} ${n1} ${n2} ${c.value}`);
+    if (c.type === 'L') elementLines.push(`${c.id} ${n1} ${n2} ${c.value}`);
+    if (c.type === 'V') elementLines.push(`${c.id} ${n1} ${n2} ${sourceExpression(c)}`);
+    if (c.type === 'I') elementLines.push(`${c.id} ${n1} ${n2} ${sourceExpression(c)}`);
+    if (c.type === 'E' && c.pins[2] && c.pins[3]) {
+      elementLines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
+    }
+    if (c.type === 'G' && c.pins[2] && c.pins[3]) {
+      elementLines.push(`${c.id} ${n1} ${n2} ${getNode(c.pins[2])} ${getNode(c.pins[3])} ${c.value}`);
+    }
+    if (c.type === 'F') {
+      const dep = c.dependent ?? { vctrl: 'V1', gain: c.value || '1' };
+      elementLines.push(`${c.id} ${n1} ${n2} ${dep.vctrl} ${dep.gain}`);
+    }
+    if (c.type === 'H') {
+      const dep = c.dependent ?? { vctrl: 'V1', gain: c.value || '1' };
+      elementLines.push(`${c.id} ${n1} ${n2} ${dep.vctrl} ${dep.gain}`);
+    }
+    if (c.type === 'D') elementLines.push(`${c.id} ${n1} ${n2} Ddefault`);
+    if (c.type === 'LED') {
+      const color = c.led?.color ?? 'red';
+      const diodeId = c.id.startsWith('D') ? c.id : `D${c.id}`;
+      elementLines.push(`${diodeId} ${n1} ${n2} ${ledModelName(color)}`);
+    }
+    if (c.type === 'K') {
+      const switchId = c.id.startsWith('R') ? c.id : `R${c.id}`;
+      elementLines.push(`${switchId} ${n1} ${n2} ${c.switch?.closed ? '1m' : '1e12'}`);
+    }
+  }
+
+  const lines = [...modelLines, ...elementLines, '', '.op', '.end'];
   return lines.join('\n');
 }
