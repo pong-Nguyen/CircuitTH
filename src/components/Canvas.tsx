@@ -3,9 +3,11 @@ import type {
   CircuitComponent,
   ComponentType,
   DependentSourceConfig,
+  LedConfig,
   Pin,
   Point,
   SourceConfig,
+  SwitchConfig,
   Wire,
 } from '../types';
 import { useViewport, screenToWorld, worldToScreen } from '../hooks/useViewport';
@@ -50,6 +52,8 @@ function defaultValue(type: string) {
   if (type === 'I') return '1m';
   if (type === 'E' || type === 'G') return '1';
   if (type === 'F' || type === 'H') return 'V1 1';
+  if (type === 'K') return 'open';
+  if (type === 'LED') return 'red';
   return '';
 }
 
@@ -82,6 +86,16 @@ function defaultDependent(type: string): DependentSourceConfig | undefined {
   return undefined;
 }
 
+function defaultSwitch(type: string): SwitchConfig | undefined {
+  if (type === 'K') return { closed: false };
+  return undefined;
+}
+
+function defaultLed(type: string): LedConfig | undefined {
+  if (type === 'LED') return { color: 'red' };
+  return undefined;
+}
+
 function componentLabel(c: CircuitComponent) {
   if (c.type === 'GND') return '';
   if ((c.type === 'F' || c.type === 'H') && c.dependent) {
@@ -90,6 +104,8 @@ function componentLabel(c: CircuitComponent) {
   if ((c.type === 'V' || c.type === 'I') && c.source) {
     return `${c.id} ${c.source.mode}`;
   }
+  if (c.type === 'K') return `${c.id} ${c.switch?.closed ? 'closed' : 'open'}`;
+  if (c.type === 'LED') return `${c.id} ${c.led?.color ?? 'red'}`;
   return `${c.id} ${c.value}`;
 }
 
@@ -304,6 +320,60 @@ export default function Canvas({
     ctx.stroke();
   }
 
+  function drawLed(ctx: CanvasRenderingContext2D, color = '#ef4444') {
+    drawDiode(ctx);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.moveTo(GRID * 0.2, -GRID * 1.0);
+    ctx.lineTo(GRID * 0.9, -GRID * 1.7);
+    ctx.moveTo(GRID * 0.55, -GRID * 0.65);
+    ctx.lineTo(GRID * 1.25, -GRID * 1.35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(GRID * 0.9, -GRID * 1.7);
+    ctx.lineTo(GRID * 0.68, -GRID * 1.18);
+    ctx.lineTo(GRID * 1.22, -GRID * 1.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(GRID * 1.25, -GRID * 1.35);
+    ctx.lineTo(GRID * 1.03, -GRID * 0.83);
+    ctx.lineTo(GRID * 1.57, -GRID * 1.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawSwitch(ctx: CanvasRenderingContext2D, closed = false) {
+    const d = GRID * 2;
+    const gap = GRID * 0.65;
+    ctx.beginPath();
+    ctx.moveTo(-d, 0);
+    ctx.lineTo(-gap, 0);
+    ctx.moveTo(gap, 0);
+    ctx.lineTo(d, 0);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(-gap, 0, 3.2, 0, Math.PI * 2);
+    ctx.arc(gap, 0, 3.2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(-gap, 0);
+    ctx.lineTo(gap, closed ? 0 : -GRID * 0.75);
+    ctx.stroke();
+  }
+
+  function ledColor(color?: string) {
+    if (color === 'green') return '#22c55e';
+    if (color === 'blue') return '#3b82f6';
+    if (color === 'yellow') return '#facc15';
+    if (color === 'white') return '#e5e7eb';
+    return '#ef4444';
+  }
+
   function drawDependentSource(ctx: CanvasRenderingContext2D, type: string) {
     const d = GRID * 2, r = GRID * 1.0;
     ctx.beginPath(); ctx.moveTo(-d, 0); ctx.lineTo(-r, 0); ctx.stroke();
@@ -342,6 +412,8 @@ export default function Canvas({
     if (c.type === 'I') drawCurrentSource(ctx);
     if (['E', 'F', 'G', 'H'].includes(c.type)) drawDependentSource(ctx, c.type);
     if (c.type === 'D') drawDiode(ctx);
+    if (c.type === 'LED') drawLed(ctx, ledColor(c.led?.color));
+    if (c.type === 'K') drawSwitch(ctx, c.switch?.closed);
     if (c.type === 'GND') drawGnd(ctx);
     ctx.restore();
 
@@ -433,6 +505,8 @@ export default function Canvas({
         value: defaultValue(selectedTool),
         source: defaultSource(selectedTool),
         dependent: defaultDependent(selectedTool),
+        switch: defaultSwitch(selectedTool),
+        led: defaultLed(selectedTool),
         pins: updatePins(sx, sy, ghostRotation, selectedTool),
       };
       drawComponent(ctx, ghost, true);
@@ -523,6 +597,8 @@ export default function Canvas({
         value: defaultValue(type),
         source: defaultSource(type),
         dependent: defaultDependent(type),
+        switch: defaultSwitch(type),
+        led: defaultLed(type),
         pins: updatePins(swx, swy, ghostRotation, type),
       };
       setComponents(prev => [...prev, nextComponent]);

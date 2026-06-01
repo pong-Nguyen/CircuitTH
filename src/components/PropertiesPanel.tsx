@@ -1,4 +1,4 @@
-import type { CircuitComponent, SourceConfig, SourceMode } from '../types';
+import type { CircuitComponent, LedColor, SourceConfig, SourceMode } from '../types';
 
 const GRID = 20;
 
@@ -121,6 +121,14 @@ const componentMeta: Record<string, {
     title: 'Diode',
     helper: 'Diode uses the default SPICE model Ddefault.',
   },
+  LED: {
+    title: 'LED',
+    helper: 'LED uses a diode model based on its selected color.',
+  },
+  K: {
+    title: 'Switch',
+    helper: 'Closed switch is simulated as a very small resistor; open switch is simulated as a very large resistor.',
+  },
   GND: {
     title: 'Ground',
     helper: 'Ground sets this net to node 0.',
@@ -144,8 +152,12 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete, language
   const meta = componentMeta[selected.type] ?? { title: selected.type };
   const isIndependentSource = selected.type === 'V' || selected.type === 'I';
   const isCurrentControlled = selected.type === 'F' || selected.type === 'H';
+  const isSwitch = selected.type === 'K';
+  const isLed = selected.type === 'LED';
   const source = selected.source ?? defaultSource(selected.type, selected.value);
   const dependent = selected.dependent ?? { vctrl: 'V1', gain: selected.value || '1' };
+  const switchConfig = selected.switch ?? { closed: false };
+  const ledConfig = selected.led ?? { color: 'red' as LedColor };
   const canEditValue = Boolean(meta.valueLabel);
 
   function update(updated: Partial<CircuitComponent>) {
@@ -162,6 +174,14 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete, language
 
   function updateDependent(next: { vctrl: string; gain: string }) {
     onUpdate({ ...selected!, dependent: next, value: `${next.vctrl} ${next.gain}` });
+  }
+
+  function updateSwitch(closed: boolean) {
+    onUpdate({ ...selected!, switch: { closed }, value: closed ? 'closed' : 'open' });
+  }
+
+  function updateLedColor(color: LedColor) {
+    onUpdate({ ...selected!, led: { color }, value: color });
   }
 
   function rotate() {
@@ -337,6 +357,45 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete, language
             />
           </div>
         </div>
+      )}
+
+      {isSwitch && (
+        <>
+          <label>State</label>
+          <div className="modeTabs switchTabs">
+            <button
+              className={!switchConfig.closed ? 'active' : ''}
+              onClick={() => updateSwitch(false)}
+            >
+              Open
+            </button>
+            <button
+              className={switchConfig.closed ? 'active' : ''}
+              onClick={() => updateSwitch(true)}
+            >
+              Closed
+            </button>
+          </div>
+        </>
+      )}
+
+      {isLed && (
+        <>
+          <label>LED Color</label>
+          <div className="colorPicker">
+            {(['red', 'green', 'blue', 'yellow', 'white'] as LedColor[]).map(color => (
+              <button
+                key={color}
+                className={ledConfig.color === color ? 'active' : ''}
+                onClick={() => updateLedColor(color)}
+                title={color}
+              >
+                <span className={`ledSwatch ${color}`} />
+                {color}
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {meta.helper && <p className="fieldHint">{meta.helper}</p>}

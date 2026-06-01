@@ -662,6 +662,10 @@ canvas {
   margin-top: 4px;
 }
 
+.modeTabs.switchTabs {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .modeTabs button {
   height: 30px;
   border: 1px solid #cbd5e1;
@@ -689,6 +693,48 @@ canvas {
 .propertyGrid label {
   margin-top: 10px;
 }
+
+.colorPicker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.colorPicker button {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.colorPicker button.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ledSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #94a3b8;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.ledSwatch.red { background: #ef4444; color: #ef4444; }
+.ledSwatch.green { background: #22c55e; color: #22c55e; }
+.ledSwatch.blue { background: #3b82f6; color: #3b82f6; }
+.ledSwatch.yellow { background: #facc15; color: #facc15; }
+.ledSwatch.white { background: #f8fafc; color: #cbd5e1; }
 
 .button-group {
   display: grid;

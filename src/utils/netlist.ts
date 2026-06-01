@@ -23,6 +23,18 @@ function sourceExpression(c: CircuitComponent) {
   return `SIN(${src.sinOffset} ${src.sinAmplitude} ${src.sinFrequency} ${src.sinDelay} ${src.sinDamping} ${src.sinPhase})`;
 }
 
+function ledModelName(color = 'red') {
+  return `Dled_${color}`;
+}
+
+function ledModelLine(color = 'red') {
+  if (color === 'green') return '.model Dled_green D(Is=2e-20 N=2.1)';
+  if (color === 'blue') return '.model Dled_blue D(Is=1e-22 N=2.4)';
+  if (color === 'yellow') return '.model Dled_yellow D(Is=5e-21 N=2.0)';
+  if (color === 'white') return '.model Dled_white D(Is=1e-22 N=2.5)';
+  return '.model Dled_red D(Is=1e-20 N=2)';
+}
+
 export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
   const uf = new UnionFind();
 
@@ -107,10 +119,28 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
       lines.push(`${c.id} ${n1} ${n2} ${dep.vctrl} ${dep.gain}`);
     }
     if (c.type === 'D') lines.push(`${c.id} ${n1} ${n2} Ddefault`);
+    if (c.type === 'LED') {
+      const color = c.led?.color ?? 'red';
+      const diodeId = c.id.startsWith('D') ? c.id : `D${c.id}`;
+      lines.push(`${diodeId} ${n1} ${n2} ${ledModelName(color)}`);
+    }
+    if (c.type === 'K') {
+      const switchId = c.id.startsWith('R') ? c.id : `R${c.id}`;
+      lines.push(`${switchId} ${n1} ${n2} ${c.switch?.closed ? '1m' : '1e12'}`);
+    }
   }
 
   if (components.some(c => c.type === 'D')) {
     lines.push('.model Ddefault D');
+  }
+
+  const ledColors = new Set(
+    components
+      .filter(c => c.type === 'LED')
+      .map(c => c.led?.color ?? 'red'),
+  );
+  for (const color of ledColors) {
+    lines.push(ledModelLine(color));
   }
 
   lines.push('', '.op', '.end');

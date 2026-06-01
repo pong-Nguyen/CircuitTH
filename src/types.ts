@@ -9,6 +9,8 @@ export type ComponentType =
   | 'G'
   | 'H'
   | 'D'
+  | 'LED'
+  | 'K'
   | 'GND';
 
 export interface Point {
@@ -50,6 +52,16 @@ export interface DependentSourceConfig {
   gain: string;
 }
 
+export interface SwitchConfig {
+  closed: boolean;
+}
+
+export type LedColor = 'red' | 'green' | 'blue' | 'yellow' | 'white';
+
+export interface LedConfig {
+  color: LedColor;
+}
+
 export interface CircuitComponent {
   uuid: string;
 
@@ -74,6 +86,10 @@ export interface CircuitComponent {
   source?: SourceConfig;
 
   dependent?: DependentSourceConfig;
+
+  switch?: SwitchConfig;
+
+  led?: LedConfig;
 
   pins: Pin[];
 }
