@@ -509,6 +509,54 @@ body {
   font-size: 12px;
 }
 
+.plotModeTabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #111827;
+}
+
+.plotModeTabs button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.plotModeTabs button.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+.nodePicker .axisSelect {
+  gap: 8px;
+  padding-right: 6px;
+}
+
+.axisSelect select {
+  height: 24px;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 12px;
+}
+
+.axisLabel {
+  align-self: center;
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .plotSurface {
   position: relative;
   flex: 1;

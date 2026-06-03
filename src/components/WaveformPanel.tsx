@@ -21,6 +21,10 @@ const text = {
     opY: 'Điện áp (V)',
     tranX: 'Thời gian (ms)',
     dcX: 'Đầu vào / Sweep',
+    dcSweep: 'Sweep',
+    dcXY: 'Y-X',
+    xSignal: 'Trục X',
+    ySignals: 'Trục Y',
     acX: 'Tần số (Hz)',
     mag: 'Biên độ (dB)',
     phase: 'Pha (độ)',
@@ -33,6 +37,10 @@ const text = {
     opY: 'Voltage (V)',
     tranX: 'Time (ms)',
     dcX: 'Input / Sweep',
+    dcSweep: 'Sweep',
+    dcXY: 'Y-X',
+    xSignal: 'X Axis',
+    ySignals: 'Y Axis',
     acX: 'Frequency (Hz)',
     mag: 'Magnitude (dB)',
     phase: 'Phase (deg)',
@@ -64,12 +72,17 @@ export default function WaveformPanel({
   const labels = text[language];
   const nodes = useMemo(() => voltageNodes(result), [result]);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [dcPlotMode, setDcPlotMode] = useState<'sweep' | 'xy'>('sweep');
+  const [dcXNode, setDcXNode] = useState<string>('');
 
   useEffect(() => {
     if (nodes.length > 0 && selectedNodes.length === 0) {
       setSelectedNodes(nodes.slice(0, Math.min(3, nodes.length)));
     }
-  }, [nodes, selectedNodes.length]);
+    if (nodes.length > 0 && !dcXNode) {
+      setDcXNode(nodes[0]);
+    }
+  }, [nodes, selectedNodes.length, dcXNode]);
 
   useEffect(() => {
     if (!open || !plotRef.current || !result?.success || result.data.length === 0) return;
@@ -121,13 +134,17 @@ export default function WaveformPanel({
         });
       }
     } else if (result.analysis_type === 'dc') {
-      layout.xaxis.title = labels.dcX;
+      const xNode = dcXNode || nodes[0];
+      layout.xaxis.title = dcPlotMode === 'xy' ? `V(${xNode ?? 'x'})` : labels.dcX;
       layout.yaxis.title = labels.opY;
       for (const node of activeNodes) {
         traces.push({
           type: 'scatter',
           mode: 'lines',
-          x: result.data.map(point => point.sweep_value),
+          x: result.data.map(point => {
+            if (dcPlotMode !== 'xy') return point.sweep_value;
+            return point.values.find(v => v.type === 'voltage' && v.name === xNode)?.real ?? null;
+          }),
           y: result.data.map(point => point.values.find(v => v.type === 'voltage' && v.name === node)?.real ?? null),
           name: `V(${node})`,
         });
@@ -174,7 +191,7 @@ export default function WaveformPanel({
     return () => {
       cancelled = true;
     };
-  }, [open, result, selectedNodes, nodes, labels]);
+  }, [open, result, selectedNodes, nodes, labels, dcPlotMode, dcXNode]);
 
   useEffect(() => {
     if (plotRef.current && plotlyRef.current) plotlyRef.current.Plots.resize(plotRef.current);
@@ -196,6 +213,36 @@ export default function WaveformPanel({
 
       {result?.success && nodes.length > 0 && (
         <div className="nodePicker" aria-label={labels.nodes}>
+          {result.analysis_type === 'dc' && (
+            <>
+              <div className="plotModeTabs">
+                <button
+                  className={dcPlotMode === 'sweep' ? 'active' : ''}
+                  onClick={() => setDcPlotMode('sweep')}
+                >
+                  {labels.dcSweep}
+                </button>
+                <button
+                  className={dcPlotMode === 'xy' ? 'active' : ''}
+                  onClick={() => setDcPlotMode('xy')}
+                >
+                  {labels.dcXY}
+                </button>
+              </div>
+              {dcPlotMode === 'xy' && (
+                <label className="axisSelect">
+                  {labels.xSignal}
+                  <select value={dcXNode || nodes[0]} onChange={event => setDcXNode(event.target.value)}>
+                    {nodes.map(node => (
+                      <option key={node} value={node}>V({node})</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <span className="axisLabel">{dcPlotMode === 'xy' ? labels.ySignals : labels.nodes}</span>
+            </>
+          )}
+
           {nodes.map(node => (
             <label key={node}>
               <input
