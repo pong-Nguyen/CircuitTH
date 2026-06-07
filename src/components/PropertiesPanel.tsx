@@ -1,10 +1,24 @@
-import type { CircuitComponent, LedColor, SourceConfig, SourceMode } from '../types';
+import type { CircuitComponent, LedColor, SourceConfig, SourceMode, TransistorKind } from '../types';
 
 const GRID = 20;
 
 function updatePins(x: number, y: number, rotation: number, type?: string) {
   if (type === 'GND') return [{ x, y }];
   const d = GRID * 2;
+  if (type === 'Q' || type === 'M') {
+    const localPins = [
+      { x: d, y: -d },
+      { x: -d, y: 0 },
+      { x: d, y: d },
+    ];
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.round(Math.cos(rad));
+    const sin = Math.round(Math.sin(rad));
+    return localPins.map(p => ({
+      x: x + p.x * cos - p.y * sin,
+      y: y + p.x * sin + p.y * cos,
+    }));
+  }
   if (type === 'E' || type === 'G') {
     const localPins = [
       { x: -d, y: 0 },
@@ -129,6 +143,14 @@ const componentMeta: Record<string, {
     title: 'Switch',
     helper: 'Closed switch is simulated as a very small resistor; open switch is simulated as a very large resistor.',
   },
+  Q: {
+    title: 'Ideal BJT',
+    helper: 'Pins: Collector, Base, Emitter. Linear ideal model: Ic = gm x Vbe.',
+  },
+  M: {
+    title: 'Ideal MOSFET',
+    helper: 'Pins: Drain, Gate, Source. Linear ideal model: Id = gm x Vgs.',
+  },
   GND: {
     title: 'Ground',
     helper: 'Ground sets this net to node 0.',
@@ -154,10 +176,16 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete, language
   const isCurrentControlled = selected.type === 'F' || selected.type === 'H';
   const isSwitch = selected.type === 'K';
   const isLed = selected.type === 'LED';
+  const isTransistor = selected.type === 'Q' || selected.type === 'M';
   const source = selected.source ?? defaultSource(selected.type, selected.value);
   const dependent = selected.dependent ?? { vctrl: 'V1', gain: selected.value || '1' };
   const switchConfig = selected.switch ?? { closed: false };
   const ledConfig = selected.led ?? { color: 'red' as LedColor };
+  const transistor = selected.transistor ?? {
+    kind: selected.type === 'Q' ? 'NPN' as TransistorKind : 'NMOS' as TransistorKind,
+    gm: '1m',
+    outputResistance: '1Meg',
+  };
   const canEditValue = Boolean(meta.valueLabel);
 
   function update(updated: Partial<CircuitComponent>) {
@@ -182,6 +210,10 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete, language
 
   function updateLedColor(color: LedColor) {
     onUpdate({ ...selected!, led: { color }, value: color });
+  }
+
+  function updateTransistor(next: typeof transistor) {
+    onUpdate({ ...selected!, transistor: next, value: next.gm });
   }
 
   function rotate() {
@@ -394,6 +426,46 @@ export default function PropertiesPanel({ selected, onUpdate, onDelete, language
                 {color}
               </button>
             ))}
+          </div>
+        </>
+      )}
+
+      {isTransistor && (
+        <>
+          <label>Type</label>
+          <div className="modeTabs switchTabs">
+            {(selected.type === 'Q'
+              ? ['NPN', 'PNP'] as TransistorKind[]
+              : ['NMOS', 'PMOS'] as TransistorKind[]
+            ).map(kind => (
+              <button
+                key={kind}
+                className={transistor.kind === kind ? 'active' : ''}
+                onClick={() => updateTransistor({ ...transistor, kind })}
+              >
+                {kind}
+              </button>
+            ))}
+          </div>
+          <div className="propertyGrid">
+            <div>
+              <label>Transconductance gm (S)</label>
+              <input
+                value={transistor.gm}
+                placeholder="1m"
+                onChange={e => updateTransistor({ ...transistor, gm: e.target.value })}
+                onKeyDown={e => e.stopPropagation()}
+              />
+            </div>
+            <div>
+              <label>Output resistance</label>
+              <input
+                value={transistor.outputResistance}
+                placeholder="1Meg"
+                onChange={e => updateTransistor({ ...transistor, outputResistance: e.target.value })}
+                onKeyDown={e => e.stopPropagation()}
+              />
+            </div>
           </div>
         </>
       )}

@@ -11,6 +11,8 @@ export type ComponentType =
   | 'D'
   | 'LED'
   | 'K'
+  | 'Q'
+  | 'M'
   | 'GND';
 
 export interface Point {
@@ -62,6 +64,14 @@ export interface LedConfig {
   color: LedColor;
 }
 
+export type TransistorKind = 'NPN' | 'PNP' | 'NMOS' | 'PMOS';
+
+export interface TransistorConfig {
+  kind: TransistorKind;
+  gm: string;
+  outputResistance: string;
+}
+
 export interface CircuitComponent {
   uuid: string;
 
@@ -90,6 +100,8 @@ export interface CircuitComponent {
   switch?: SwitchConfig;
 
   led?: LedConfig;
+
+  transistor?: TransistorConfig;
 
   pins: Pin[];
 }

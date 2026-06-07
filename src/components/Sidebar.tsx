@@ -6,7 +6,7 @@ interface Props {
   language?: 'vi' | 'en';
 }
 
-type ToolId = 'R' | 'C' | 'L' | 'V' | 'I' | 'E' | 'F' | 'G' | 'H' | 'D' | 'LED' | 'K' | 'GND' | 'wire';
+type ToolId = 'R' | 'C' | 'L' | 'V' | 'I' | 'E' | 'F' | 'G' | 'H' | 'D' | 'LED' | 'K' | 'Q' | 'M' | 'GND' | 'wire';
 
 const quickTools: Array<{ type: ToolId; name: string; shortcut?: string }> = [
   { type: 'R', name: 'Resistor' },
@@ -61,6 +61,8 @@ const libraryGroups: Array<{ title: string; titleVi: string; items: Array<{ type
     items: [
       { type: 'D', name: 'Diode', description: 'Default diode', descriptionVi: 'Diode mac dinh' },
       { type: 'LED', name: 'LED', description: 'Color-selectable light emitting diode', descriptionVi: 'LED co the chon mau' },
+      { type: 'Q', name: 'Ideal BJT', description: 'NPN / PNP linear transistor', descriptionVi: 'BJT ly tuong NPN / PNP' },
+      { type: 'M', name: 'Ideal MOSFET', description: 'NMOS / PMOS linear transistor', descriptionVi: 'MOSFET ly tuong NMOS / PMOS' },
     ],
   },
   {
@@ -90,6 +92,8 @@ function ToolIcon({ type }: { type: ToolId | 'IC' }) {
   if (type === 'D') return <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M2 16h12M34 16h12M14 7v18l18-9-18-9ZM34 7v18" /></svg>;
   if (type === 'LED') return <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M2 16h12M34 16h12M14 7v18l18-9-18-9ZM34 7v18" /><path d="M29 5l7-5M33 9l7-5" /></svg>;
   if (type === 'K') return <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M2 16h13M33 16h13M15 16l17-9" /><circle cx="15" cy="16" r="3" /><circle cx="33" cy="16" r="3" /></svg>;
+  if (type === 'Q') return <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M4 16h14M18 7v18M18 11l16-7v7M18 21l16 7v-7" /><path d="M29 22l5 6-7-1" /></svg>;
+  if (type === 'M') return <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M4 16h10M14 7v18M20 9v14M20 11h14V4M20 21h14v7" /><path d="M25 16h7M28 13l4 3-4 3" /></svg>;
   if (type === 'GND') return <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M24 4v9M12 13h24M16 19h16M20 25h8" /></svg>;
   if (type === 'wire') return <svg viewBox="0 0 48 32" aria-hidden="true"><path d="M4 8h14v16h26" /><circle cx="4" cy="8" r="3" /><circle cx="18" cy="24" r="3" /><circle cx="44" cy="24" r="3" /></svg>;
 

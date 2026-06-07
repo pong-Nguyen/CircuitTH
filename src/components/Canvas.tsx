@@ -8,6 +8,7 @@ import type {
   Point,
   SourceConfig,
   SwitchConfig,
+  TransistorConfig,
   Wire,
 } from '../types';
 import { useViewport, screenToWorld, worldToScreen } from '../hooks/useViewport';
@@ -21,6 +22,20 @@ function snap(v: number) {
 function updatePins(x: number, y: number, rotation: number, type?: string): Pin[] {
   if (type === 'GND') return [{ x, y }]; // single pin at center top
   const d = GRID * 2;
+  if (type === 'Q' || type === 'M') {
+    const localPins = [
+      { x: d, y: -d },
+      { x: -d, y: 0 },
+      { x: d, y: d },
+    ];
+    const rad = (rotation * Math.PI) / 180;
+    const cos = Math.round(Math.cos(rad));
+    const sin = Math.round(Math.sin(rad));
+    return localPins.map(p => ({
+      x: x + p.x * cos - p.y * sin,
+      y: y + p.x * sin + p.y * cos,
+    }));
+  }
   if (type === 'E' || type === 'G') {
     const localPins = [
       { x: -d, y: 0 },
@@ -54,6 +69,7 @@ function defaultValue(type: string) {
   if (type === 'F' || type === 'H') return 'V1 1';
   if (type === 'K') return 'open';
   if (type === 'LED') return 'red';
+  if (type === 'Q' || type === 'M') return '1m';
   return '';
 }
 
@@ -96,6 +112,12 @@ function defaultLed(type: string): LedConfig | undefined {
   return undefined;
 }
 
+function defaultTransistor(type: string): TransistorConfig | undefined {
+  if (type === 'Q') return { kind: 'NPN', gm: '1m', outputResistance: '1Meg' };
+  if (type === 'M') return { kind: 'NMOS', gm: '1m', outputResistance: '1Meg' };
+  return undefined;
+}
+
 function componentLabel(c: CircuitComponent) {
   if (c.type === 'GND') return '';
   if ((c.type === 'F' || c.type === 'H') && c.dependent) {
@@ -106,6 +128,7 @@ function componentLabel(c: CircuitComponent) {
   }
   if (c.type === 'K') return `${c.id} ${c.switch?.closed ? 'closed' : 'open'}`;
   if (c.type === 'LED') return `${c.id} ${c.led?.color ?? 'red'}`;
+  if (c.type === 'Q' || c.type === 'M') return `${c.id} ${c.transistor?.kind ?? (c.type === 'Q' ? 'NPN' : 'NMOS')}`;
   return `${c.id} ${c.value}`;
 }
 
@@ -366,6 +389,45 @@ export default function Canvas({
     ctx.stroke();
   }
 
+  function drawBjt(ctx: CanvasRenderingContext2D, kind = 'NPN') {
+    const d = GRID * 2;
+    ctx.beginPath();
+    ctx.moveTo(-d, 0); ctx.lineTo(-GRID * 0.65, 0);
+    ctx.moveTo(-GRID * 0.65, -GRID); ctx.lineTo(-GRID * 0.65, GRID);
+    ctx.moveTo(-GRID * 0.65, -GRID * 0.55); ctx.lineTo(d, -d);
+    ctx.moveTo(-GRID * 0.65, GRID * 0.55); ctx.lineTo(d, d);
+    ctx.stroke();
+    const direction = kind === 'PNP' ? -1 : 1;
+    const ax = GRID * 0.9;
+    const ay = GRID * 1.1;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax - direction * GRID * 0.35, ay - GRID * 0.05);
+    ctx.lineTo(ax - GRID * 0.05, ay - direction * GRID * 0.35);
+    ctx.closePath();
+    ctx.fillStyle = ctx.strokeStyle as string;
+    ctx.fill();
+  }
+
+  function drawMosfet(ctx: CanvasRenderingContext2D, kind = 'NMOS') {
+    const d = GRID * 2;
+    ctx.beginPath();
+    ctx.moveTo(-d, 0); ctx.lineTo(-GRID, 0);
+    ctx.moveTo(-GRID, -GRID); ctx.lineTo(-GRID, GRID);
+    ctx.moveTo(-GRID * 0.45, -GRID); ctx.lineTo(-GRID * 0.45, GRID);
+    ctx.moveTo(-GRID * 0.45, -GRID * 0.65); ctx.lineTo(d, -d);
+    ctx.moveTo(-GRID * 0.45, GRID * 0.65); ctx.lineTo(d, d);
+    ctx.stroke();
+    const direction = kind === 'PMOS' ? -1 : 1;
+    ctx.beginPath();
+    ctx.moveTo(-GRID * 0.25 * direction, 0);
+    ctx.lineTo(GRID * 0.45 * direction, 0);
+    ctx.lineTo(GRID * 0.15 * direction, -GRID * 0.25);
+    ctx.moveTo(GRID * 0.45 * direction, 0);
+    ctx.lineTo(GRID * 0.15 * direction, GRID * 0.25);
+    ctx.stroke();
+  }
+
   function ledColor(color?: string) {
     if (color === 'green') return '#22c55e';
     if (color === 'blue') return '#3b82f6';
@@ -414,6 +476,8 @@ export default function Canvas({
     if (c.type === 'D') drawDiode(ctx);
     if (c.type === 'LED') drawLed(ctx, ledColor(c.led?.color));
     if (c.type === 'K') drawSwitch(ctx, c.switch?.closed);
+    if (c.type === 'Q') drawBjt(ctx, c.transistor?.kind);
+    if (c.type === 'M') drawMosfet(ctx, c.transistor?.kind);
     if (c.type === 'GND') drawGnd(ctx);
     ctx.restore();
 
@@ -507,6 +571,7 @@ export default function Canvas({
         dependent: defaultDependent(selectedTool),
         switch: defaultSwitch(selectedTool),
         led: defaultLed(selectedTool),
+        transistor: defaultTransistor(selectedTool),
         pins: updatePins(sx, sy, ghostRotation, selectedTool),
       };
       drawComponent(ctx, ghost, true);
@@ -599,6 +664,7 @@ export default function Canvas({
         dependent: defaultDependent(type),
         switch: defaultSwitch(type),
         led: defaultLed(type),
+        transistor: defaultTransistor(type),
         pins: updatePins(swx, swy, ghostRotation, type),
       };
       setComponents(prev => [...prev, nextComponent]);

@@ -147,6 +147,19 @@ export function generateNetlist(components: CircuitComponent[], wires: Wire[]) {
       const switchId = c.id.startsWith('R') ? c.id : `R${c.id}`;
       elementLines.push(`${switchId} ${n1} ${n2} ${c.switch?.closed ? '1m' : '1e12'}`);
     }
+    if ((c.type === 'Q' || c.type === 'M') && c.pins[2]) {
+      const control = getNode(c.pins[1]);
+      const common = getNode(c.pins[2]);
+      const transistor = c.transistor ?? {
+        kind: c.type === 'Q' ? 'NPN' : 'NMOS',
+        gm: '1m',
+        outputResistance: '1Meg',
+      };
+      const polarity = transistor.kind === 'PNP' || transistor.kind === 'PMOS' ? '-' : '';
+      const suffix = c.id.replace(/[^a-zA-Z0-9]/g, '');
+      elementLines.push(`G${suffix} ${n1} ${common} ${control} ${common} ${polarity}${transistor.gm}`);
+      elementLines.push(`R${suffix} ${n1} ${common} ${transistor.outputResistance}`);
+    }
   }
 
   const lines = [...modelLines, ...elementLines, '', '.op', '.end'];
