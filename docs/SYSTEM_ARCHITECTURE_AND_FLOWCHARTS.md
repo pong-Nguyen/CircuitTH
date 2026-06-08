@@ -658,3 +658,362 @@ Mo hinh nay hoat dong voi OP, DC, AC va TRAN, nhung chua mo phong phi tuyen nhu 
 | `WaveformPanel.tsx` | `voltageNodes` va effect dung Plotly | Chon node va ve cac loai waveform |
 | `useViewport.ts` | `screenToWorld`, `worldToScreen`, `beginPan`, `continuePan`, `endPan`, `zoomAt`, `resetViewport` | Quan ly camera schematic |
 | `unionFind.ts` | `find`, `union` | Gom cac diem noi thanh cung mot node dien |
+
+---
+
+## 8. Kien truc Circuit Engine
+
+### 8.1 Vi tri cua engine trong he thong
+
+```mermaid
+flowchart LR
+    SC[Schematic State]
+    NG[Netlist Generator]
+    APP[App.runSimulation]
+
+    subgraph WRAPPER["TypeScript Engine Wrapper"]
+        GE[getEngine]
+        LE[loadEngine]
+        CE[CircuitEngine.simulate]
+        HELP[voltages / currents / tranSeries / acBode]
+    end
+
+    subgraph WASM_PACKAGE["Emscripten WASM Package"]
+        JS[circuit_engine.js]
+        WM[circuit_engine.wasm]
+        API[simulate netlist -> JSON string]
+    end
+
+    RES[SimulationResult]
+    UI[Console + Waveform]
+
+    SC --> NG --> APP --> GE
+    GE --> LE --> JS --> WM
+    GE --> CE --> API
+    API --> RES
+    RES --> HELP
+    RES --> UI
+```
+
+Engine chay hoan toan trong trinh duyet. Trinh duyet khong gui netlist den server, do do viec mo phong van hoat dong sau khi trang va hai file WASM da duoc tai.
+
+### 8.2 Hop dong API giua React va WASM
+
+Frontend chi su dung mot ham cua WASM:
+
+```ts
+simulate(netlist: string): string
+```
+
+Du lieu vao la netlist dang text. Du lieu tra ve la JSON string, sau do wrapper chuyen thanh:
+
+```ts
+interface SimulationResult {
+  success: boolean;
+  error_msg: string;
+  analysis_type: 'op' | 'dc' | 'ac' | 'tran';
+  node_map: Record<string, number>;
+  data: DataPoint[];
+}
+```
+
+Moi `DataPoint` dai dien cho mot diem operating point, sweep, tan so hoac thoi gian:
+
+```mermaid
+classDiagram
+    class SimulationResult {
+      success: boolean
+      error_msg: string
+      analysis_type: op|dc|ac|tran
+      node_map: Record
+      data: DataPoint[]
+    }
+
+    class DataPoint {
+      sweep_type: operating_point|dc_sweep|frequency|time
+      sweep_value: number
+      values: NodeValue[]
+    }
+
+    class NodeValue {
+      name: string
+      type: voltage|current
+      real: number
+      imag: number
+    }
+
+    SimulationResult "1" *-- "*" DataPoint
+    DataPoint "1" *-- "*" NodeValue
+```
+
+### 8.3 Flowchart nap engine
+
+```mermaid
+flowchart TD
+    START([getEngine])
+    SINGLE{Da co engine singleton?}
+    RETURN[Tra engine hien tai]
+    LOAD[loadEngine]
+    PROMISE{Da co module promise?}
+    SCRIPT[Tao script tag circuit_engine.js]
+    WAIT[Cho script load]
+    FACTORY[Lay window.CircuitEngineModule]
+    LOCATE[Cau hinh locateFile cho circuit_engine.wasm]
+    INIT[Khoi tao WASM module]
+    WRAP[new CircuitEngine module]
+    CACHE[Luu engine singleton]
+
+    START --> SINGLE
+    SINGLE -- Co --> RETURN
+    SINGLE -- Khong --> LOAD --> PROMISE
+    PROMISE -- Co --> WRAP
+    PROMISE -- Khong --> SCRIPT --> WAIT --> FACTORY --> LOCATE --> INIT --> WRAP
+    WRAP --> CACHE --> RETURN
+```
+
+`_modulePromise` ngan viec tai WASM trung lap. `_engineSingleton` dam bao moi lan Run deu tai su dung cung mot engine.
+
+### 8.4 Flowchart goi mo phong
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Toolbar
+    participant App
+    participant Netlist as generateNetlist
+    participant Wrapper as CircuitEngine.ts
+    participant WASM as circuit_engine.wasm
+    participant Waveform
+
+    User->>Toolbar: Nhan Run
+    Toolbar->>App: onRun()
+    App->>Netlist: generateNetlist(components, wires)
+    Netlist-->>App: SPICE-like netlist
+    App->>App: Chen lenh .op/.dc/.ac/.tran
+    App->>Wrapper: getEngine()
+    Wrapper-->>App: CircuitEngine singleton
+    App->>Wrapper: simulate(netlist)
+    Wrapper->>WASM: mod.simulate(netlist)
+    WASM-->>Wrapper: JSON string
+    Wrapper-->>App: SimulationResult
+
+    alt success = true
+        App->>Waveform: result
+        Waveform->>Waveform: Chuyen data thanh Plotly traces
+    else success = false
+        App->>App: Ghi error_msg vao Console
+    end
+```
+
+### 8.5 Luong xu ly noi bo solver
+
+> Luu y: source C++ cua engine khong nam trong project hien tai. Flowchart duoi day la mo hinh suy luan dua tren API, cu phap netlist duoc chap nhan va cac loi solver tra ve nhu `Singular matrix`. Khi co source engine, can doi chieu lai tung buoc.
+
+```mermaid
+flowchart TD
+    START([simulate netlist])
+    PARSE[Doc tung dong netlist]
+    CLASSIFY{Loai dong}
+    MODEL[Luu khai bao .model]
+    ELEMENT[Tao danh sach phan tu mach]
+    COMMAND[Luu lenh .op / .dc / .ac / .tran]
+    NODES[Tao node map va bien nhanh]
+    VALIDATE[Kiem tra model, node va tham so]
+    VALID{Hop le?}
+    ANALYSIS{Loai phan tich}
+    OP[Giai operating point]
+    DC[Quet nguon va giai tai moi diem]
+    AC[Giai he so phuc tai moi tan so]
+    TRAN[Tien theo tung buoc thoi gian]
+    MATRIX[Lap he phuong trinh mach]
+    SOLVE[Giai he tuyen tinh]
+    CHECK{Ma tran giai duoc?}
+    DATA[Tao DataPoint va NodeValue]
+    JSON[Dong goi SimulationResult thanh JSON]
+    ERROR[Tra success=false va error_msg]
+
+    START --> PARSE --> CLASSIFY
+    CLASSIFY -- Model --> MODEL --> PARSE
+    CLASSIFY -- Element --> ELEMENT --> PARSE
+    CLASSIFY -- Command --> COMMAND --> NODES
+    NODES --> VALIDATE --> VALID
+    VALID -- Khong --> ERROR
+    VALID -- Co --> ANALYSIS
+
+    ANALYSIS -- OP --> OP --> MATRIX
+    ANALYSIS -- DC --> DC --> MATRIX
+    ANALYSIS -- AC --> AC --> MATRIX
+    ANALYSIS -- TRAN --> TRAN --> MATRIX
+
+    MATRIX --> SOLVE --> CHECK
+    CHECK -- Khong --> ERROR
+    CHECK -- Co --> DATA
+    DATA -->|Con diem sweep / tan so / thoi gian| MATRIX
+    DATA -->|Hoan tat| JSON
+```
+
+### 8.6 Luong giai theo tung che do
+
+#### Operating Point `.OP`
+
+```mermaid
+flowchart TD
+    START([.OP])
+    STAMP[Dong gop tung linh kien vao ma tran]
+    SOLVE[Giai he phuong trinh]
+    OK{Giai duoc?}
+    VALUES[Lay dien ap node va dong nhanh]
+    RESULT[Tra mot DataPoint operating_point]
+    ERROR[Tra loi singular matrix / model / parser]
+
+    START --> STAMP --> SOLVE --> OK
+    OK -- Co --> VALUES --> RESULT
+    OK -- Khong --> ERROR
+```
+
+#### DC Sweep `.DC`
+
+```mermaid
+flowchart TD
+    START([.DC source start stop step])
+    VALUE[Dat gia tri nguon sweep]
+    STAMP[Lap lai he phuong trinh]
+    SOLVE[Giai tai diem sweep hien tai]
+    SAVE[Luu DataPoint dc_sweep]
+    NEXT{Con gia tri sweep?}
+    RESULT[Tra danh sach DataPoint]
+
+    START --> VALUE --> STAMP --> SOLVE --> SAVE --> NEXT
+    NEXT -- Co --> VALUE
+    NEXT -- Khong --> RESULT
+```
+
+#### AC Analysis `.AC`
+
+```mermaid
+flowchart TD
+    START([.AC scale points fstart fstop])
+    FREQ[Tao danh sach tan so]
+    SOURCE[Lay bien do va pha AC cua nguon]
+    COMPLEX[Lap he phuong trinh so phuc tai tan so hien tai]
+    SOLVE[Giai real va imaginary]
+    SAVE[Luu DataPoint frequency]
+    NEXT{Con tan so?}
+    RESULT[Tra magnitude va phase thong qua NodeValue]
+
+    START --> FREQ --> SOURCE --> COMPLEX --> SOLVE --> SAVE --> NEXT
+    NEXT -- Co --> COMPLEX
+    NEXT -- Khong --> RESULT
+```
+
+#### Transient Analysis `.TRAN`
+
+```mermaid
+flowchart TD
+    START([.TRAN step stop])
+    TIME[t = 0]
+    SOURCES[Tinh nguon PULSE / SIN tai t]
+    DYNAMIC[Cap nhat trang thai C va L]
+    MATRIX[Lap he phuong trinh tai t]
+    SOLVE[Giai dien ap va dong]
+    SAVE[Luu DataPoint time]
+    NEXT[t = t + step]
+    DONE{t > stop?}
+    RESULT[Tra chuoi du lieu thoi gian]
+
+    START --> TIME --> SOURCES --> DYNAMIC --> MATRIX --> SOLVE --> SAVE --> NEXT --> DONE
+    DONE -- Chua --> SOURCES
+    DONE -- Roi --> RESULT
+```
+
+### 8.7 Anh xa linh kien giao dien sang phan tu engine
+
+| Linh kien tren schematic | Netlist gui vao engine | Ghi chu |
+|---|---|---|
+| Resistor | `R... n1 n2 value` | Phan tu tuyen tinh |
+| Capacitor | `C... n1 n2 value` | Phu thuoc tan so/thoi gian |
+| Inductor | `L... n1 n2 value` | Phu thuoc tan so/thoi gian |
+| Voltage Source | `V... n+ n- expression` | DC, AC, PULSE, SIN |
+| Current Source | `I... n+ n- expression` | DC, AC, PULSE, SIN |
+| VCVS | `E...` | Nguon ap phu thuoc ap |
+| CCCS | `F...` | Nguon dong phu thuoc dong |
+| VCCS | `G...` | Nguon dong phu thuoc ap |
+| CCVS | `H...` | Nguon ap phu thuoc dong |
+| Diode | `D... model` | Can khai bao `.model` truoc |
+| LED | `D... Dled_color` | Duoc bien dich thanh diode model |
+| Switch | `R... 1m` hoac `R... 1e12` | Mo hinh hoa bang dien tro |
+| Ideal BJT | `G...` + `R...` | Bien dich thanh VCCS va output resistance |
+| Ideal MOSFET | `G...` + `R...` | Bien dich thanh VCCS va output resistance |
+| Ground | Node `0` | Khong sinh element line |
+
+### 8.8 Xu ly ket qua engine
+
+```mermaid
+flowchart TD
+    RES[SimulationResult]
+    OK{success?}
+    ERROR[Console hien error_msg]
+    TYPE{analysis_type}
+    OP[voltages + currents]
+    DC[DC sweep hoac Y-X plot]
+    AC[acBode: magnitude dB va phase]
+    TRAN[tranSeries hoac waveform theo time]
+    CONSOLE[In bang mau du lieu]
+    PLOT[Plotly waveform]
+
+    RES --> OK
+    OK -- Khong --> ERROR
+    OK -- Co --> TYPE
+    TYPE -- op --> OP --> CONSOLE
+    TYPE -- dc --> DC --> CONSOLE
+    TYPE -- dc --> DC --> PLOT
+    TYPE -- ac --> AC --> CONSOLE
+    TYPE -- ac --> AC --> PLOT
+    TYPE -- tran --> TRAN --> CONSOLE
+    TYPE -- tran --> TRAN --> PLOT
+```
+
+### 8.9 Cac loai loi engine can xu ly
+
+| Loi | Nguyen nhan thuong gap | Cach xu ly o giao dien |
+|---|---|---|
+| Unknown model | Linh kien tham chieu model chua khai bao | Sinh `.model` truoc element |
+| Singular matrix | Node floating, mach ho, short nguon ly tuong | Dat GND, auto-reference hoac sua mach |
+| Parse/model error | Netlist sai cu phap hoac tham so khong hop le | Hien `error_msg` trong Console |
+| WASM load error | Khong tai duoc `.js` hoac `.wasm` | Bat exception tu `loadEngine` |
+| Simulation exception | WASM call nem exception | Bat trong `runSimulation` va ghi Console |
+
+### 8.10 Gioi han va huong nang cap engine
+
+Engine hien tai la mot binary WASM dong goi san; project khong co source solver de sua truc tiep. Vi vay:
+
+- Co the them linh kien moi bang cach bien dich sang cac phan tu engine da ho tro.
+- Khong the bo sung model phi tuyen BJT/MOSFET day du neu khong co source engine hoac thay engine.
+- BJT/MOSFET hien tai la mo hinh tuyen tinh `Iout = gm * Vcontrol`.
+- Viec debug solver chi dua vao netlist vao va `error_msg` tra ve.
+
+Kien truc de nang cap trong tuong lai:
+
+```mermaid
+flowchart LR
+    APP[React App]
+    PORT[SimulationEngine interface]
+    CURRENT[Current WASM Adapter]
+    NG[ngspice WASM Adapter]
+    TEST[Engine Contract Tests]
+
+    APP --> PORT
+    PORT --> CURRENT
+    PORT -. Lua chon nang cap .-> NG
+    TEST --> PORT
+```
+
+Nen tao interface chung:
+
+```ts
+interface SimulationEngine {
+  simulate(netlist: string): Promise<SimulationResult>;
+}
+```
+
+Khi do co the thay solver hien tai bang ngspice WASM ma khong can sua Canvas, Properties, storage hoac Waveform.
