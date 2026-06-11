@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import logo from '@/assets/logo.png';
 import type { StoredCircuit } from '../lib/circuitStorage';
+import type { LabUser } from '../lib/labApi';
 
 export interface SimConfig {
   mode: 'op' | 'dc' | 'tran' | 'ac';
@@ -50,6 +51,10 @@ interface Props {
   onRenameCircuit: () => void;
   onDeleteCircuit: () => void;
   onSaveCircuit: () => void;
+  labUser: LabUser | null;
+  cloudError: string;
+  onLabLogin: (email: string, password: string) => Promise<void>;
+  onLabLogout: () => void;
 }
 
 export default function Toolbar({
@@ -72,8 +77,15 @@ export default function Toolbar({
   onRenameCircuit,
   onDeleteCircuit,
   onSaveCircuit,
+  labUser,
+  cloudError,
+  onLabLogin,
+  onLabLogout,
 }: Props) {
   const [open, setOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginDraft, setLoginDraft] = useState({ email: '', password: '' });
+  const [loginBusy, setLoginBusy] = useState(false);
   const [draft, setDraft] = useState<SimConfig>(config);
   const vi = language === 'vi';
   const t = {
@@ -103,7 +115,21 @@ export default function Toolbar({
     circuitFiles: vi ? 'File mạch' : 'Circuit files',
     saving: vi ? 'Đang lưu...' : 'Saving...',
     saved: vi ? 'Đã lưu' : 'Saved',
+    login: vi ? 'Đăng nhập Lab' : 'Lab Login',
+    logout: vi ? 'Đăng xuất' : 'Logout',
   };
+
+  async function submitLogin(event: React.FormEvent) {
+    event.preventDefault();
+    setLoginBusy(true);
+    try {
+      await onLabLogin(loginDraft.email, loginDraft.password);
+      setLoginOpen(false);
+      setLoginDraft({ email: '', password: '' });
+    } finally {
+      setLoginBusy(false);
+    }
+  }
 
   function openModal() {
     setDraft({ ...config });
@@ -221,6 +247,19 @@ export default function Toolbar({
           </span>
         </div>
         <div style={{ flex: 1 }} />
+
+        {labUser ? (
+          <div className="labAccount">
+            <span className="cloudDot" />
+            <span title={labUser.email}>{labUser.fullName}</span>
+            <button onClick={onLabLogout} title={t.logout}>{t.logout}</button>
+          </div>
+        ) : (
+          <button onClick={() => setLoginOpen(true)} title={t.login} style={btnBase}>
+            <span className="offlineDot" />
+            {t.login}
+          </button>
+        )}
 
         <select
           value={language}
@@ -420,6 +459,38 @@ export default function Toolbar({
               <button onClick={apply}>{t.apply}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {loginOpen && (
+        <div className="modalOverlay" onClick={() => setLoginOpen(false)}>
+          <form className="settingsModal labLoginModal" onSubmit={submitLogin} onClick={e => e.stopPropagation()}>
+            <div className="modalHeader">
+              <strong>{t.login}</strong>
+              <button type="button" onClick={() => setLoginOpen(false)}>x</button>
+            </div>
+            <label style={labelStyle}>Email</label>
+            <input
+              style={{ ...inputStyle, marginBottom: 12 }}
+              type="email"
+              required
+              value={loginDraft.email}
+              onChange={e => setLoginDraft({ ...loginDraft, email: e.target.value })}
+            />
+            <label style={labelStyle}>{vi ? 'Mật khẩu' : 'Password'}</label>
+            <input
+              style={inputStyle}
+              type="password"
+              required
+              value={loginDraft.password}
+              onChange={e => setLoginDraft({ ...loginDraft, password: e.target.value })}
+            />
+            {cloudError && <p className="cloudError">{cloudError}</p>}
+            <div className="modalActions">
+              <button type="button" onClick={() => setLoginOpen(false)}>{t.cancel}</button>
+              <button disabled={loginBusy}>{loginBusy ? '...' : t.login}</button>
+            </div>
+          </form>
         </div>
       )}
 

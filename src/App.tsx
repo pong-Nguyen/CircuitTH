@@ -19,6 +19,17 @@ import {
   saveCircuit,
   type StoredCircuit,
 } from './lib/circuitStorage';
+import {
+  createCloudCircuit,
+  deleteCloudCircuit,
+  getLabUser,
+  hasLabToken,
+  listCloudCircuits,
+  loginLab,
+  logoutLab,
+  updateCloudCircuit,
+  type LabUser,
+} from './lib/labApi';
 
 export default function App() {
   const [components, setComponents] = useState<CircuitComponent[]>([]);
@@ -41,6 +52,8 @@ export default function App() {
   const [activeCircuitId, setActiveCircuitId] = useState<string | null>(null);
   const [storageReady, setStorageReady] = useState(false);
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [labUser, setLabUser] = useState<LabUser | null>(null);
+  const [cloudError, setCloudError] = useState('');
   const consoleEndRef = useRef<HTMLDivElement>(null);
 
   function log(line: string) {
@@ -74,15 +87,74 @@ export default function App() {
     });
   }
 
+  async function persistCircuit(next: StoredCircuit) {
+    await saveCircuit(next);
+    if (!labUser) return next;
+    const cloud = next.cloudVersion
+      ? await updateCloudCircuit(next)
+      : await createCloudCircuit(next);
+    await saveCircuit(cloud);
+    return cloud;
+  }
+
+  async function loadCloudWorkspace(user: LabUser) {
+    setStorageReady(false);
+    setLabUser(user);
+    const cloud = await listCloudCircuits();
+    if (cloud.length > 0) {
+      setCircuits(cloud);
+      loadCircuit(cloud[0]);
+    } else {
+      const initial = await createCloudCircuit(createCircuit('Untitled Circuit', {
+        components: [],
+        wires: [],
+        simConfig: defaultConfig,
+      }));
+      await saveCircuit(initial);
+      setCircuits([initial]);
+      loadCircuit(initial);
+    }
+    setStorageReady(true);
+  }
+
+  async function handleLabLogin(email: string, password: string) {
+    setCloudError('');
+    try {
+      const user = await loginLab(email, password);
+      await loadCloudWorkspace(user);
+    } catch (error) {
+      setCloudError((error as Error).message);
+      throw error;
+    }
+  }
+
+  async function handleLabLogout() {
+    logoutLab();
+    setLabUser(null);
+    setCloudError('');
+    setStorageReady(false);
+    const local = (await listCircuits()).filter(circuit => !circuit.cloudVersion);
+    if (local.length > 0) {
+      setCircuits(local);
+      loadCircuit(local[0]);
+    } else {
+      const next = createCircuit('Untitled Circuit', { components: [], wires: [], simConfig: defaultConfig });
+      await saveCircuit(next);
+      setCircuits([next]);
+      loadCircuit(next);
+    }
+    setStorageReady(true);
+  }
+
   async function createNewCircuit() {
     const name = window.prompt(language === 'vi' ? 'Tên mạch mới:' : 'New circuit name:', `Circuit ${circuits.length + 1}`);
     if (!name) return;
-    const next = createCircuit(name.trim(), {
+    let next = createCircuit(name.trim(), {
       components: [],
       wires: [],
       simConfig: defaultConfig,
     });
-    await saveCircuit(next);
+    next = await persistCircuit(next);
     updateCircuitList(next);
     loadCircuit(next);
   }
@@ -93,8 +165,8 @@ export default function App() {
     const name = window.prompt(language === 'vi' ? 'Đổi tên mạch:' : 'Rename circuit:', current.name);
     if (!name) return;
     const next = { ...current, name: name.trim(), updatedAt: Date.now() };
-    await saveCircuit(next);
-    updateCircuitList(next);
+    const saved = await persistCircuit(next);
+    updateCircuitList(saved);
   }
 
   async function deleteCurrentCircuit() {
@@ -107,6 +179,7 @@ export default function App() {
         : `Delete "${current.name}" from this device?`,
     );
     if (!ok) return;
+    if (labUser) await deleteCloudCircuit(activeCircuitId);
     await deleteCircuit(activeCircuitId);
     const remaining = circuits.filter(item => item.id !== activeCircuitId);
     if (remaining.length > 0) {
@@ -119,9 +192,9 @@ export default function App() {
       wires: [],
       simConfig: defaultConfig,
     });
-    await saveCircuit(next);
-    setCircuits([next]);
-    loadCircuit(next);
+    const saved = await persistCircuit(next);
+    setCircuits([saved]);
+    loadCircuit(saved);
   }
 
   async function forceSaveCircuit() {
@@ -133,12 +206,13 @@ export default function App() {
       components,
       wires,
       simConfig,
+      cloudVersion: current?.cloudVersion,
       createdAt: current?.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
     setSavingState('saving');
-    await saveCircuit(next);
-    updateCircuitList(next);
+    const saved = await persistCircuit(next);
+    updateCircuitList(saved);
     setSavingState('saved');
   }
 
@@ -162,7 +236,18 @@ export default function App() {
     let cancelled = false;
 
     async function hydrate() {
-      const stored = await listCircuits();
+      if (hasLabToken()) {
+        try {
+          const user = await getLabUser();
+          await loadCloudWorkspace(user);
+          return;
+        } catch (error) {
+          logoutLab();
+          setCloudError((error as Error).message);
+        }
+      }
+
+      const stored = (await listCircuits()).filter(circuit => !circuit.cloudVersion);
       if (cancelled) return;
 
       if (stored.length === 0) {
@@ -204,25 +289,27 @@ export default function App() {
       components,
       wires,
       simConfig,
+      cloudVersion: current?.cloudVersion,
       createdAt: current?.createdAt ?? Date.now(),
       updatedAt: Date.now(),
     };
 
     setSavingState('saving');
     const timer = window.setTimeout(() => {
-      saveCircuit(next)
-        .then(() => {
-          updateCircuitList(next);
+      persistCircuit(next)
+        .then(saved => {
+          updateCircuitList(saved);
           setSavingState('saved');
         })
         .catch(error => {
           console.error('Failed to save local circuit', error);
+          if (labUser) setCloudError((error as Error).message);
           setSavingState('idle');
         });
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [components, wires, simConfig, storageReady, activeCircuitId]);
+  }, [components, wires, simConfig, storageReady, activeCircuitId, labUser]);
 
   function startVerticalResize(
     event: React.MouseEvent<HTMLDivElement>,
@@ -394,6 +481,10 @@ export default function App() {
         onRenameCircuit={renameCurrentCircuit}
         onDeleteCircuit={deleteCurrentCircuit}
         onSaveCircuit={forceSaveCircuit}
+        labUser={labUser}
+        cloudError={cloudError}
+        onLabLogin={handleLabLogin}
+        onLabLogout={handleLabLogout}
       />
 
       <Sidebar selectedTool={selectedTool} setSelectedTool={setSelectedTool} language={language} />

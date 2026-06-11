@@ -150,6 +150,61 @@ body {
   white-space: nowrap;
 }
 
+.labAccount {
+  height: 32px;
+  max-width: 190px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #dbeafe;
+  background: #1e293b;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.labAccount > span:nth-child(2) {
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.labAccount button {
+  border: 0;
+  border-left: 1px solid #475569;
+  background: transparent;
+  color: #93c5fd;
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.cloudDot,
+.offlineDot {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.cloudDot { background: #22c55e; }
+.offlineDot { background: #94a3b8; }
+
+.labLoginModal {
+  width: min(360px, calc(100vw - 32px));
+}
+
+.cloudError {
+  margin: 12px 0 0;
+  padding: 8px;
+  border: 1px solid #7f1d1d;
+  color: #fecaca;
+  background: #450a0a;
+  font-size: 11px;
+}
+
 .modalOverlay {
   position: fixed;
   inset: 0;

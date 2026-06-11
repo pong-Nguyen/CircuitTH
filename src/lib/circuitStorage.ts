@@ -8,6 +8,7 @@ const ACTIVE_KEY = 'circuitth.activeCircuitId';
 
 export type StoredCircuit = Omit<CircuitDocument, 'simConfig'> & {
   simConfig: SimConfig;
+  cloudVersion?: number;
 };
 
 export interface CircuitPayload {
