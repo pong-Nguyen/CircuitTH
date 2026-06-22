@@ -12,6 +12,7 @@ import type {
   Wire,
 } from '../types';
 import { useViewport, screenToWorld, worldToScreen } from '../hooks/useViewport';
+import { createId } from '../lib/ids';
 
 const GRID = 20;
 
@@ -654,7 +655,7 @@ export default function Canvas({
       const type = selectedTool as ComponentType;
       const count = components.filter(c => c.type === type).length;
       const nextComponent: CircuitComponent = {
-        uuid: crypto.randomUUID(),
+        uuid: createId(),
         id: type + (count + 1),
         type, x: swx, y: swy,
         rotation: ghostRotation,
@@ -691,7 +692,7 @@ export default function Canvas({
         if (endPt) {
           const last = tempWire[tempWire.length - 1];
           const finalPoints = [...tempWire, { x: endPt.x, y: last.y }, { x: endPt.x, y: endPt.y }];
-          setWires(prev => [...prev, { id: crypto.randomUUID(), points: finalPoints }]);
+          setWires(prev => [...prev, { id: createId(), points: finalPoints }]);
           setDrawingWire(false);
           setTempWire([]);
         } else {

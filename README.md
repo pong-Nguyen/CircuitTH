@@ -1,73 +1,145 @@
-# React + TypeScript + Vite
+# CircuitTH
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+CircuitTH is a Vite/React circuit schematic and simulation web app. It can run by itself with local browser storage, or connect to the LabManager REST API to sync circuits between machines.
 
-Currently, two official plugins are available:
+## Requirements
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 20 or newer
+- npm
+- Optional for cloud/LAN sync: LabManager API running on another machine or Docker host
 
-## React Compiler
+## Install
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+npm.cmd install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Create a local environment file:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+Copy-Item .env.example .env
 ```
+
+For local API on the same machine:
+
+```env
+VITE_LAB_API_URL=http://localhost:4000/api
+```
+
+For LAN testing where the server machine IP is `172.17.176.58`:
+
+```env
+VITE_LAB_API_URL=http://172.17.176.58:4000/api
+```
+
+The `.env` file is local only and must not be uploaded to Git.
+
+## Run On One Machine
+
+Start CircuitTH:
+
+```powershell
+npm.cmd run dev
+```
+
+Open the URL shown by Vite, usually:
+
+```text
+http://localhost:5173
+```
+
+## Test With Two Machines On The Same Network
+
+Use this when one computer runs the server and another computer opens the circuit web app.
+
+### 1. Start LabManager On The Server Machine
+
+On the server machine, open PowerShell in the LabManager project:
+
+```powershell
+cd C:\Users\Admin\Documents\Codex\2026-05-30\files-mentioned-by-the-user-circuitth\work\LabManager
+docker compose up -d --build
+```
+
+Check the API:
+
+```text
+http://172.17.176.58:4000/api/health
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+### 2. Configure LabManager CORS
+
+In `LabManager\.env`, allow the CircuitTH LAN URL:
+
+```env
+CORS_ORIGIN=http://172.17.176.58:5190,http://172.17.176.58:5173,http://172.17.176.58:8080,http://localhost:5173,http://localhost:5190
+VITE_API_URL=http://172.17.176.58:4000/api
+```
+
+After editing `.env`, rebuild LabManager:
+
+```powershell
+docker compose up -d --build
+```
+
+### 3. Open Windows Firewall Ports On The Server Machine
+
+Run PowerShell as Administrator:
+
+```powershell
+New-NetFirewallRule -DisplayName "LabManager API 4000" -Direction Inbound -Protocol TCP -LocalPort 4000 -Action Allow
+New-NetFirewallRule -DisplayName "LabManager Web 8080" -Direction Inbound -Protocol TCP -LocalPort 8080 -Action Allow
+New-NetFirewallRule -DisplayName "CircuitTH Vite 5190" -Direction Inbound -Protocol TCP -LocalPort 5190 -Action Allow
+```
+
+### 4. Start CircuitTH For LAN Access
+
+On the server machine, open PowerShell in this project:
+
+```powershell
+cd C:\Users\Admin\Documents\Codex\2026-05-30\files-mentioned-by-the-user-circuitth\work\CircuitTH-main
+npm.cmd run dev -- --host 0.0.0.0 --port 5190
+```
+
+Vite should print a network URL like:
+
+```text
+Network: http://172.17.176.58:5190/
+```
+
+### 5. Test From The Second Machine
+
+Open these URLs on the test machine:
+
+```text
+http://172.17.176.58:4000/api/health
+http://172.17.176.58:5190
+```
+
+Then log in, create a circuit, add components, save, refresh, and confirm the circuit is still available.
+
+## Common LAN Issues
+
+If CircuitTH opens but login shows `Failed to fetch`, check these first:
+
+- Open `http://172.17.176.58:4000/api/health` from the test machine.
+- Make sure `CircuitTH-main\.env` uses `VITE_LAB_API_URL=http://172.17.176.58:4000/api`, not `localhost`.
+- Restart Vite after changing `.env`.
+- Rebuild LabManager after changing `LabManager\.env`.
+- Make sure Windows Firewall allows ports `4000`, `8080`, and `5190`.
+
+If you see `crypto.randomUUID is not a function`, update to the latest code. CircuitTH now uses a fallback ID generator for LAN HTTP testing.
+
+## Build
+
+```powershell
+npm.cmd run build
+```
+
+The production output is created in `dist`.

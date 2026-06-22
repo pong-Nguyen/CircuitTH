@@ -1,5 +1,6 @@
 import type { SimConfig } from '../components/Toolbar';
 import type { CircuitComponent, CircuitDocument, Wire } from '../types';
+import { createId } from './ids';
 
 const DB_NAME = 'circuitth-local-db';
 const DB_VERSION = 1;
@@ -82,7 +83,7 @@ export async function deleteCircuit(id: string): Promise<void> {
 export function createCircuit(name: string, payload: CircuitPayload): StoredCircuit {
   const now = Date.now();
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     name,
     components: payload.components,
     wires: payload.wires,
